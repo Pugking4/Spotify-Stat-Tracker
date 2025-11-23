@@ -1,5 +1,4 @@
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 
 public class DatabaseWrapper {
@@ -8,16 +7,16 @@ public class DatabaseWrapper {
     private static final String PASSWORD = "apples";
 
     public static Connection getConnection() throws SQLException {
-        System.out.println("DatabaseWrapper: Getting database connection.");
+        Logger.println("DatabaseWrapper: Getting database connection.", 4);
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
     public static void insertPlayedTrack(PlayedTrack playedTrack) {
-        System.out.println("DatabaseWrapper: Recording track play: " + playedTrack.track().name());
+        Logger.println("DatabaseWrapper: Recording track play: " + playedTrack.track().name(), 3);
         List<Artist> artists = playedTrack.track().album().artists();
         artists.addAll(playedTrack.track().artists());
         for (Artist artist : artists) {
-            System.out.println("DatabaseWrapper: Inserting artist: " + artist.name());
+            Logger.println("DatabaseWrapper: Inserting artist: " + artist.name(), 4);
             insertArtist(artist);
         }
 
@@ -35,7 +34,7 @@ public class DatabaseWrapper {
 
         insertDevice(playedTrack.device());
         int id = insertTrackHistory(playedTrack);
-        System.out.println("DatabaseWrapper: Finished recording track play, id: " + id + ".");
+        Logger.println("Finished recording track play, id: " + id + ".", 3);
     }
 
     private static int insertTrackHistory(PlayedTrack playedTrack) {
@@ -72,20 +71,20 @@ public class DatabaseWrapper {
         VALUES (?, ?)
         ON CONFLICT (id) DO NOTHING
     """;
-        System.out.println("DatabaseWrapper, insertArtist: About to start connection.");
+        Logger.println("About to start connection.", 4);
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            System.out.println("DatabaseWrapper, insertArtist: Inside connection.");
+            Logger.println("Inside connection.", 4);
             stmt.setString(1, artist.id());
             stmt.setString(2, artist.name());
 
             stmt.executeUpdate();
-            System.out.println("DatabaseWrapper, insertArtist: Executed update.");
+            Logger.println("Executed update.", 4);
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("DatabaseWrapper, insertArtist: Ended.");
+        Logger.println("Ended.", 4);
     }
 
     private static void insertTrack(Track track) {

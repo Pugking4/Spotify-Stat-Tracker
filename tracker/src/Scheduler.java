@@ -1,3 +1,5 @@
+import org.apache.http.client.HttpResponseException;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -24,26 +26,46 @@ public class Scheduler {
         myTask = new Runnable() {
             @Override
             public void run() {
-                System.out.println("Scheduler: Starting poll.");
-                Map<String, Object> trackData = SpotifyWrapper.getCurrentlyPlayingTrack();
-                if (trackData == null) return;
+                Logger.println("Starting poll.", 4);
+                Map<String, Object> trackData = null;
+                try {
+                    trackData = SpotifyWrapper.getCurrentlyPlayingTrack();
+                } catch (HttpResponseException e) {
+                    switch (e.getStatusCode()) {
+                        case 204 -> {
+                            Logger.println("Nothing is playing, empty response: " + e.getMessage(), 4);
+                            return;
+                        }
+                        case 401 -> {
+                            Logger.println("SpotifyWrapper needs to be reauthenticated: " + e.getMessage(), 1);
+                            return;
+                        }
+                        case 403 -> {
+                            return;
+                        }
+                        case 429 -> {
+                            Logger.println("Rate limit has been reached: " + e.getMessage());
+                            return;
+                        }
+                    }
+                }
                 List<Map<String, Object>> deviceData = SpotifyWrapper.getAvailableDevices();
                 if (deviceData == null) return;
                 Map<String, Object> deviceRaw = deviceData.stream().filter(x -> (Boolean) x.get("is_active")).findFirst().get();
+                assert trackData != null;
                 trackData.put("device", deviceRaw);
 
                 if (isPlayingSong(trackData)) {
-                    System.out.println("Scheduler: Song is playing.");
+                    Logger.println("Song is playing.", 4);
                     setActiveMode();
                     PlayingTrack playingTrack = createPlayingTrack(trackData);
                     if (isCurrentTrackPlaying(playingTrack)) {
-                        System.out.println("Scheduler: Current track is still playing.");
+                        Logger.println("Current track is still playing.", 4);
                         currentTrack.updateProgress(playingTrack.progressMs);
                         if (currentTrack.played) {
-                            System.out.println("Scheduler: Track has finished playing.");
+                            Logger.println("Track has finished playing.", 3);
                             PlayedTrack playedTrack = createPlayedTrack(trackData, currentTrack);
-                            //DatabaseWrapper.insertPlayedTrack(playedTrack);
-                            System.out.println("Scheduler: Calling DatabaseWrapper to record played track.");
+                            Logger.println("Calling DatabaseWrapper to record played track.", 4);
                             executor.submit(() -> {
                                 try {
                                     DatabaseWrapper.insertPlayedTrack(playedTrack);
@@ -52,18 +74,18 @@ public class Scheduler {
                                 }
                             });
 
-                            System.out.println("Scheduler: DatabaseWrapper has been called.");
+                            Logger.println("DatabaseWrapper has been called.", 4);
                             currentTrack = null;
                         }
                     } else {
-                        System.out.println("Scheduler: New track has started playing.");
+                        Logger.println("New track has started playing.", 3);
                         currentTrack = playingTrack;
                     }
                 } else {
-                    System.out.println("Scheduler: No song is playing.");
+                    Logger.println("No song is playing.", 4);
                     setIdleMode();
                 }
-                System.out.println("Scheduler: Ending poll.");
+                Logger.println("Ending poll.", 4);
             }
         };
 
@@ -116,31 +138,18 @@ public class Scheduler {
     }
 
     private PlayedTrack createPlayedTrack(Map<String, Object> data, PlayingTrack playingTrack) {
-        /*System.out.println("DEBUG!");
-
-        for (var thing : data.keySet()) {
-            System.out.println(thing + ": " + data.get(thing).getClass());
-        }
-
-        System.out.println("!GUBED");*/
-
-
-        System.out.println("Scheduler, createPlayedTrack: Starting.");
+        Logger.println("Starting.", 4);
         String repeatState = (String) data.get("repeat_state");
         Boolean shuffleState = (Boolean) data.get("shuffle_state");
         Instant timeFinished = playingTrack.timeFinished;
-        //System.out.println("Scheduler, createPlayedTrack: 1.");
 
         Map<String, Object> deviceMap = (Map<String, Object>) data.get("device");
         Device device = new Device((String) deviceMap.get("name"), (String) deviceMap.get("type"));
-        //System.out.println("Scheduler, createPlayedTrack: 2.");
 
         Map<String, Object> contextMap = (Map<String, Object>) data.get("context");
         String contextType = (String) contextMap.get("type");
-        //System.out.println("Scheduler, createPlayedTrack: 3.");
 
         Map<String, Object> itemMap = (Map<String, Object>) data.get("item");
-        //System.out.println("Scheduler, createPlayedTrack: 4.");
 
         Integer durationMs = (Integer) itemMap.get("duration_ms");
         Boolean isExplicit = (Boolean) itemMap.get("explicit");
@@ -148,7 +157,6 @@ public class Scheduler {
         String trackId = (String) itemMap.get("id");
         String trackName = (String) itemMap.get("name");
         Integer currentPopularity = (Integer) itemMap.get("popularity");
-        //System.out.println("Scheduler, createPlayedTrack: 5.");
 
         List<Artist> trackArtists = new ArrayList<>();
         List<Map<String, Object>> trackArtistMaps = (List<Map<String, Object>>) itemMap.get("artists");
@@ -158,20 +166,16 @@ public class Scheduler {
             Artist trackArtist = new Artist(trackArtistId, trackArtistName);
             trackArtists.add(trackArtist);
         }
-        //System.out.println("Scheduler, createPlayedTrack: 6.");
 
         Map<String, Object> albumMap = (Map<String, Object>) itemMap.get("album");
         String albumId = (String) albumMap.get("id");
         String albumType = (String) albumMap.get("album_type");
         String albumName = (String) albumMap.get("name");
-        //System.out.println("Scheduler, createPlayedTrack: 7.");
 
         String albumReleaseDateRaw = (String) albumMap.get("release_date");
         String albumReleaseDatePrecision = (String) albumMap.get("release_date_precision");
-        //System.out.println("Scheduler, createPlayedTrack: 8.");
 
         LocalDate albumReleaseDate = parseSpotifyDate(albumReleaseDateRaw, albumReleaseDatePrecision);
-        //System.out.println("Scheduler, createPlayedTrack: 9.");
 
 
         List<Artist> albumArtists = new ArrayList<>();
@@ -182,18 +186,15 @@ public class Scheduler {
             Artist albumArtist = new Artist(albumArtistId, albumArtistName);
             albumArtists.add(albumArtist);
         }
-        //System.out.println("Scheduler, createPlayedTrack: 10.");
 
         List<Map<String, Object>> imageMaps = (List<Map<String, Object>>) albumMap.get("images");
         String albumCover = (String) imageMaps.getFirst().get("url");
-        //System.out.println("Scheduler, createPlayedTrack: 11.");
 
         Album album = new Album(albumId, albumName, albumCover, albumReleaseDate, albumReleaseDatePrecision, albumType, albumArtists);
         Track track = new Track(trackId, trackName, album, durationMs, isExplicit, isLocal, trackArtists);
-        //System.out.println("Scheduler, createPlayedTrack: 12.");
 
         PlayedTrack playedTrack = new PlayedTrack(track,contextType, device, currentPopularity, timeFinished);
-        System.out.println("Scheduler, createPlayedTrack: Ending.");
+        Logger.println("Ending.", 4);
         return playedTrack;
     }
 

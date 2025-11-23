@@ -17,7 +17,7 @@ import java.util.Map;
 
 public class SpotifyOAuthServer {
     private static final int PORT = 8888;
-    private static final Path CODE_FILE = Paths.get("oauth_code.txt");
+    private static final Path CODE_FILE = Paths.get("./tracker/resources/oauth_code.txt");
     private static String code;
     private static String state;
 
@@ -26,8 +26,7 @@ public class SpotifyOAuthServer {
         server.createContext("/callback", new CallbackHandler());
         server.setExecutor(null);
         server.start();
-        System.out.println("Server started on http://localhost:" + PORT + "/callback");
-        System.out.println("path is: " + CODE_FILE.toString());
+        Logger.println("Server started on " + server.getAddress() + ":" + PORT + "/callback");
     }
 
     static class CallbackHandler implements HttpHandler {
