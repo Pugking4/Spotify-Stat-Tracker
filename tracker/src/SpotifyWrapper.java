@@ -2,6 +2,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.client.HttpResponseException;
 
 import java.awt.*;
 import java.io.IOException;
@@ -16,7 +17,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -30,12 +30,13 @@ public class SpotifyWrapper {
     private static final String clientSecret = "73d7330795784cd68e64cfc770179c11";
     private static final String clientId = "c308214cd94247fdb57a48a98c3dfa7c";
     private static final String redirectUri = "http://127.0.0.1:8888/callback";
-    private static final Path refreshTokenPath = Paths.get("refresh_token.txt");
+    private static final Path refreshTokenPath = Paths.get("./tracker/resources/refresh_token.txt");
+    private static final Path authCodePath = Paths.get("./tracker/resources/oauth_code.txt");
     private static final String authorisationString = Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
 
     static {
         if (retrieveRefreshToken().isEmpty()) {
-            System.out.println("SpotifyWrapper Startup: Couldn't find refresh token, starting full OAuth sequence.");
+            Logger.println("Couldn't find refresh token, starting full OAuth sequence.");
             try {
                 authorise();
             } catch (IOException e) {
@@ -43,7 +44,7 @@ public class SpotifyWrapper {
             }
         } else {
             refreshToken = retrieveRefreshToken();
-            System.out.println("SpotifyWrapper Startup: Found refresh token, using: " + refreshToken);
+            Logger.println("Found refresh token, using: " + refreshToken);
         }
     }
 
@@ -71,12 +72,11 @@ public class SpotifyWrapper {
 
 
             HttpResponse<String> response = httpClient.send(tokenRequest, HttpResponse.BodyHandlers.ofString());
-            //System.out.println("Refresh token response: " + response.body());
 
             Map<String, Object> tokenResponse = objectMapper.readValue(response.body(), Map.class);
 
             if (tokenResponse.containsKey("error")) {
-                System.out.println("Refresh token invalid, need full authorization: " + tokenResponse.get("error_description"));
+                Logger.println("Refresh token invalid, need full authorization: " + tokenResponse.get("error_description"));
                 authorise();
                 return 0;
             }
@@ -95,6 +95,7 @@ public class SpotifyWrapper {
     }
 
     private static void requestAccessToken(String code) {
+        Logger.println("Requesting access token.");
         try {
             URI tokenURI = URI.create("https://accounts.spotify.com/api/token");
 
@@ -111,14 +112,14 @@ public class SpotifyWrapper {
 
 
             HttpResponse<String> response = httpClient.send(tokenRequest, HttpResponse.BodyHandlers.ofString());
-            //System.out.println("Token response: " + response.body());
 
             Map<String, Object> tokenResponse = objectMapper.readValue(response.body(), Map.class);
             accessToken = (String) tokenResponse.get("access_token");
             accessTokenExpiry = Instant.now().plusMillis((Integer) tokenResponse.get("expires_in"));
             refreshToken = (String) tokenResponse.get("refresh_token");
-            System.out.println("Gotten new refresh token: " + refreshToken);
+            Logger.println("Gotten new refresh token: " + refreshToken);
 
+            Logger.println("Writing refresh token to file.");
             try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(refreshTokenPath))) {
                 writer.println(refreshToken);
             }
@@ -130,11 +131,10 @@ public class SpotifyWrapper {
     }
 
     private static String retrieveOAuthCode() {
-        Path filePath = Paths.get("oauth_code.txt");
         String authCode = "";
         try {
-            if (Files.exists(filePath) && Files.size(filePath) > 0) {
-                List<String> lines = Files.readAllLines(filePath);
+            if (Files.exists(authCodePath) && Files.size(authCodePath) > 0) {
+                List<String> lines = Files.readAllLines(authCodePath);
                 if (!lines.isEmpty()) {
                     authCode = lines.getFirst().trim();
                 }
@@ -142,7 +142,6 @@ public class SpotifyWrapper {
         } catch (IOException e) {
             System.err.println("Error reading file with Files.readAllLines: " + e.getMessage());
         }
-        //System.out.println("Auth code: " + authCode);
         return authCode;
     }
 
@@ -162,6 +161,7 @@ public class SpotifyWrapper {
 
 
     private static void authorise() throws IOException {
+        Logger.println("Starting OAuthServer.", 4);
         SpotifyOAuthServer.startServer();
 
         try {
@@ -176,13 +176,14 @@ public class SpotifyWrapper {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(authURI);
             } else {
-                System.out.println("Please open this URL in your browser: " + authURI.toString());
+                Logger.println("Please open this URL in your browser: " + authURI.toString(), 1);
             }
 
             int attempts = 5;
             String code = retrieveOAuthCode();
             while (code.isEmpty() && attempts > 0) {
                 Thread.sleep(1000);
+                Logger.println("Starting attempt " + attempts + " to get oAuth code.");
                 code = retrieveOAuthCode();
                 attempts--;
             }
@@ -200,7 +201,7 @@ public class SpotifyWrapper {
         }
     }
 
-    public static Map<String, Object> getCurrentlyPlayingTrack() {
+    public static Map<String, Object> getCurrentlyPlayingTrack() throws HttpResponseException {
         try {
             URI currentPlayingURI = new URIBuilder("https://api.spotify.com/v1/me/player/currently-playing").build();
             HttpRequest currentPlayingRequest = HttpRequest.newBuilder(currentPlayingURI)
@@ -209,15 +210,33 @@ public class SpotifyWrapper {
                     .build();
 
             HttpResponse<String> response = httpClient.send(currentPlayingRequest, HttpResponse.BodyHandlers.ofString());
-            //System.out.println(response.body());
-            if (response.body().isEmpty()) return null;
-            return objectMapper.readValue(response.body(), Map.class);
+            Map<String, Object> results;
+            if (response.body().isEmpty()) {
+                results = null;
+            } else {
+                results = objectMapper.readValue(response.body(), Map.class);
+            }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+            checkHTTPErrors(results);
+            return results;
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
+    }
 
-        return null;
+    private static void checkHTTPErrors(Map<String, Object> map) throws HttpResponseException {
+        if (map == null) throw new HttpResponseException(204, "HTTP response was empty.");
+        if (!map.containsKey("error")) return;
+        var errorMap = (Map<String, Object>) map.get("error");
+        int statusCode = (int) errorMap.get("status");
+        String message = (String) errorMap.get("message");
+
+        throw new HttpResponseException(statusCode, message);
+
     }
 
     public static List<Map<String, Object>> getAvailableDevices() {
@@ -229,7 +248,6 @@ public class SpotifyWrapper {
                     .build();
 
             HttpResponse<String> response = httpClient.send(availableDevicesRequest, HttpResponse.BodyHandlers.ofString());
-            //System.out.println(response.body());
             Map<String, Object> data = objectMapper.readValue(response.body(), Map.class);
 
             // Get the "devices" list
