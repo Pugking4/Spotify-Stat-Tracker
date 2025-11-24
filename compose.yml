@@ -1,0 +1,26 @@
+services:
+  spotify-tracker:
+    build:
+      context: ./tracker
+    depends_on:
+      - track-database
+    environment:
+      NODE_ENV: production
+    ports:
+      - "8888:8888"
+
+  track-database:
+    image: postgres:18
+    container_name: track-database
+    environment:
+      POSTGRES_USER: pugking4
+      POSTGRES_PASSWORD: apples
+      POSTGRES_DB: track-database
+    volumes:
+      - ./setup/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - track-database:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+volumes:
+  track-database:
