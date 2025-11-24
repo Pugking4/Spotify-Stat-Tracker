@@ -1,22 +1,21 @@
-# Build stage using Eclipse Temurin 25 JDK with Maven (adjust if using Gradle or other)
-FROM eclipse-temurin:25-jdk AS build
+# Build stage: use Maven with Java 25 to compile your code
+FROM maven:3.9.1-eclipse-temurin-25 AS build
 
 WORKDIR /app
 
-# Copy your project files
-COPY pom.xml .
-COPY src ./src
+# Copy pom.xml from tracker directory and source folder
+COPY tracker/pom.xml ./pom.xml
+COPY tracker/src ./src
 
-# Build the project (skip tests for faster build, remove if you want tests)
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
-# Runtime stage with smaller image just to run the jar
+# Runtime stage: smaller image running just the jar
 FROM eclipse-temurin:25-jdk
 
 WORKDIR /app
 
-# Copy the built jar from the build stage
-COPY --from=build /app/target/Spotify-Tracker-prod.jar ./Spotify-Tracker-prod.jar
+# Copy the jar built by Maven from the build stage
+COPY --from=build /app/target/*.jar ./Spotify-Tracker-prod.jar
 
 EXPOSE 8888
 
