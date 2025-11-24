@@ -23,7 +23,7 @@ public class SpotifyOAuthServer {
 
     public static void startServer() {
         try {
-            HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", PORT), 0);
+            HttpServer server = HttpServer.create(new InetSocketAddress("192.168.7.200", PORT), 0);
             server.createContext("/callback", new CallbackHandler());
             server.setExecutor(null);
             server.start();
