@@ -24,9 +24,9 @@ import java.util.Map;
 
 public class SpotifyOAuthServer {
     private static final int PORT = 8888;
-    private static final String KEYSTORE_PATH = "./tracker/resources/keystore.jks"; // your keystore file path
+    private static final String KEYSTORE_PATH = "./resources/keystore.jks"; // your keystore file path
     private static final String KEYSTORE_PASSWORD = "password"; // your keystore password
-    private static final Path CODE_FILE = Paths.get("./tracker/resources/oauth_code.txt");
+    private static final Path CODE_FILE = Paths.get("./resources/oauth_code.txt");
     private static String code;
     private static String state;
 
