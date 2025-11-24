@@ -19,7 +19,7 @@ services:
       POSTGRES_DB: track-database
     volumes:
       - ./setup/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
-      - track-database:/var/lib/postgresql/data
+      - track-database:/var/lib/postgresql
     ports:
       - "5433:5432"
 
