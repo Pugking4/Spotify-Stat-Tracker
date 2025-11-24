@@ -1,5 +1,5 @@
 # Build stage: use Maven with Java 25 to compile your code
-FROM maven:3.9.1-eclipse-temurin-25 AS build
+FROM eclipse-temurin:25-jdk-alpine AS build
 
 WORKDIR /app
 
