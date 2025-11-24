@@ -29,8 +29,11 @@ public class Scheduler {
                 Logger.println("Starting poll.", 4);
                 Map<String, Object> trackData = null;
                 try {
+                    Logger.println("Trying to get currently playing track.", 4);
                     trackData = SpotifyWrapper.getCurrentlyPlayingTrack();
+                    Logger.println("Successfully got current track.", 4);
                 } catch (HttpResponseException e) {
+                    Logger.println("Failed to get current track.", 4);
                     switch (e.getStatusCode()) {
                         case 204 -> {
                             Logger.println("Nothing is playing, empty response: " + e.getMessage(), 4);
@@ -38,13 +41,16 @@ public class Scheduler {
                         }
                         case 401 -> {
                             Logger.println("SpotifyWrapper needs to be reauthenticated: " + e.getMessage(), 1);
+                            Logger.log("HTTP response failed", e);
                             return;
                         }
                         case 403 -> {
+                            Logger.log("HTTP response failed", e);
                             return;
                         }
                         case 429 -> {
-                            Logger.println("Rate limit has been reached: " + e.getMessage());
+                            Logger.println("Rate limit has been reached: " + e.getMessage(), 1);
+                            Logger.log("HTTP response failed", e);
                             return;
                         }
                     }

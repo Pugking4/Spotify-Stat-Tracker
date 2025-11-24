@@ -2,8 +2,8 @@ import java.sql.*;
 import java.util.List;
 
 public class DatabaseWrapper {
-    private static final String URL = "jdbc:postgresql://localhost:5433/postgres";
-    private static final String USER = "postgres";
+    private static final String URL = "jdbc:postgresql://localhost:5433/track-database";
+    private static final String USER = "pugking4";
     private static final String PASSWORD = "apples";
 
     public static Connection getConnection() throws SQLException {
@@ -61,6 +61,7 @@ public class DatabaseWrapper {
             throw new RuntimeException("Insert failed: no ID returned");
 
         } catch (SQLException e) {
+            Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
     }
@@ -82,6 +83,7 @@ public class DatabaseWrapper {
             Logger.println("Executed update.", 4);
 
         } catch (SQLException e) {
+            Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
         Logger.println("Ended.", 4);
@@ -107,6 +109,7 @@ public class DatabaseWrapper {
             stmt.executeUpdate();
 
         } catch (SQLException e) {
+            Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
     }
@@ -131,6 +134,7 @@ public class DatabaseWrapper {
             stmt.executeUpdate();
 
         } catch (SQLException e) {
+            Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
     }
@@ -151,6 +155,7 @@ public class DatabaseWrapper {
             stmt.executeUpdate();
 
         } catch (SQLException e) {
+            Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
     }
@@ -171,6 +176,7 @@ public class DatabaseWrapper {
             stmt.executeUpdate();
 
         } catch (SQLException e) {
+            Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
     }
@@ -191,6 +197,7 @@ public class DatabaseWrapper {
             stmt.executeUpdate();
 
         } catch (SQLException e) {
+            Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
     }
