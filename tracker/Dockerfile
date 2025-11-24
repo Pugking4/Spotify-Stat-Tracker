@@ -17,5 +17,8 @@ FROM eclipse-temurin:25-jre
 WORKDIR /app
 
 COPY --from=build /app/target/spotify-tracker-1.0.0.jar ./app.jar
+RUN mkdir -p ./resources
+COPY --from=build /app/target/resources/keystore.jks ./resources/keystore.jks
+
 
 CMD ["java", "-jar", "app.jar"]
