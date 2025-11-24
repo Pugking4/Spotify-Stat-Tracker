@@ -29,7 +29,7 @@ public class SpotifyWrapper {
     private static String refreshToken;
     private static final String clientSecret = "[REDACTED]";
     private static final String clientId = "[REDACTED]";
-    private static final String redirectUri = "http://[REDACTED]:8888/callback";
+    private static final String redirectUri = "https://[REDACTED]:8888/callback";
     private static final Path refreshTokenPath = Paths.get("./tracker/resources/refresh_token.txt");
     private static final Path authCodePath = Paths.get("./tracker/resources/oauth_code.txt");
     private static final String authorisationString = Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
@@ -164,7 +164,7 @@ public class SpotifyWrapper {
             URIBuilder authURIBuilder = new URIBuilder("https://accounts.spotify.com/authorize")
                     .setParameter("client_id", "[REDACTED]")
                     .setParameter("response_type", "code")
-                    .setParameter("redirect_uri", "http://[REDACTED]:8888/callback")
+                    .setParameter("redirect_uri", redirectUri)
                     .setParameter("scope", "user-read-currently-playing user-read-playback-state");
 
             URI authURI = authURIBuilder.build();
