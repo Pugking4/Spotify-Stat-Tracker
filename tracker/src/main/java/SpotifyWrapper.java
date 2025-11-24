@@ -30,8 +30,8 @@ public class SpotifyWrapper {
     private static final String clientSecret = "73d7330795784cd68e64cfc770179c11";
     private static final String clientId = "c308214cd94247fdb57a48a98c3dfa7c";
     private static final String redirectUri = "https://192.168.7.200:8888/callback";
-    private static final Path refreshTokenPath = Paths.get("./tracker/resources/refresh_token.txt");
-    private static final Path authCodePath = Paths.get("./tracker/resources/oauth_code.txt");
+    private static final Path refreshTokenPath = Paths.get("./resources/refresh_token.txt");
+    private static final Path authCodePath = Paths.get("./resources/oauth_code.txt");
     private static final String authorisationString = Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
 
     static {
