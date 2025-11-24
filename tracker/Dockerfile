@@ -4,8 +4,8 @@ FROM eclipse-temurin:25-jdk-alpine AS build
 WORKDIR /app
 
 # Copy pom.xml from tracker directory and source folder
-COPY tracker/pom.xml ./pom.xml
-COPY tracker/src ./src
+COPY pom.xml ./pom.xml
+COPY src ./src
 
 RUN mvn clean package -DskipTests
 
