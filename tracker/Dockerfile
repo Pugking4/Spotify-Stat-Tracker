@@ -1,22 +1,27 @@
-# Build stage: use Maven with Java 25 to compile your code
-FROM maven:3.9.1-eclipse-temurin-25 AS build
+FROM openjdk:25-jdk
+
+RUN apt-get update && apt-get install -y wget && \
+    wget https://downloads.apache.org/maven/maven-3/3.9.1/binaries/apache-maven-3.9.1-bin.tar.gz && \
+    tar -xvzf apache-maven-3.9.1-bin.tar.gz -C /opt && \
+    ln -s /opt/apache-maven-3.9.1 /opt/maven && \
+    ln -s /opt/maven/bin/mvn /usr/bin/mvn && \
+    rm apache-maven-3.9.1-bin.tar.gz && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV MAVEN_HOME=/opt/maven
+ENV PATH=$MAVEN_HOME/bin:$PATH
 
 WORKDIR /app
 
-# Copy pom.xml from tracker directory and source folder
-COPY pom.xml ./pom.xml
+COPY pom.xml .
 COPY src ./src
 
 RUN mvn clean package -DskipTests
 
-# Runtime stage: smaller image running just the jar
-FROM eclipse-temurin:25-jdk
+FROM openjdk:25-jdk
 
 WORKDIR /app
 
-# Copy the jar built by Maven from the build stage
-COPY --from=build /app/target/*.jar ./Spotify-Tracker-prod.jar
+COPY --from=0 /app/target/*.jar ./app.jar
 
-EXPOSE 8888
-
-ENTRYPOINT ["java", "-jar", "Spotify-Tracker-prod.jar"]
+CMD ["java", "-jar", "app.jar"]
