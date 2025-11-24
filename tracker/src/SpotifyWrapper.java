@@ -37,11 +37,8 @@ public class SpotifyWrapper {
     static {
         if (retrieveRefreshToken().isEmpty()) {
             Logger.println("Couldn't find refresh token, starting full OAuth sequence.");
-            try {
-                authorise();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            // sleep until user visits oauthserver webpage, then run auth sequence
+            authorise();
         } else {
             refreshToken = retrieveRefreshToken();
             Logger.println("Found refresh token, using: " + refreshToken);
@@ -87,9 +84,8 @@ public class SpotifyWrapper {
             accessToken = (String) tokenResponse.get("access_token");
             return (Integer) tokenResponse.get("expires_in");
 
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
+            Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
     }
@@ -123,9 +119,8 @@ public class SpotifyWrapper {
             try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(refreshTokenPath))) {
                 writer.println(refreshToken);
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
+            Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
     }
@@ -154,13 +149,14 @@ public class SpotifyWrapper {
                 }
             }
         } catch (IOException e) {
-            System.err.println("Error reading file with Files.readAllLines: " + e.getMessage());
+            Logger.log("not sure", e);
+            throw new RuntimeException(e);
         }
         return "";
     }
 
 
-    private static void authorise() throws IOException {
+    private static void authorise() {
         Logger.println("Starting OAuthServer.", 4);
         SpotifyOAuthServer.startServer();
 
@@ -168,37 +164,51 @@ public class SpotifyWrapper {
             URIBuilder authURIBuilder = new URIBuilder("https://accounts.spotify.com/authorize")
                     .setParameter("client_id", "c308214cd94247fdb57a48a98c3dfa7c")
                     .setParameter("response_type", "code")
-                    .setParameter("redirect_uri", "http://127.0.0.1:8888/callback")
+                    .setParameter("redirect_uri", "http://192.168.7.200:8888/callback")
                     .setParameter("scope", "user-read-currently-playing user-read-playback-state");
 
             URI authURI = authURIBuilder.build();
 
+            /*
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(authURI);
             } else {
                 Logger.println("Please open this URL in your browser: " + authURI.toString(), 1);
-            }
+            }*/
+
+            Logger.println("Please open this URL in your browser: " + authURI.toString(), 1);
 
             int attempts = 5;
             String code = retrieveOAuthCode();
             while (code.isEmpty() && attempts > 0) {
-                Thread.sleep(1000);
+                Thread.sleep(10000);
                 Logger.println("Starting attempt " + attempts + " to get oAuth code.");
                 code = retrieveOAuthCode();
                 attempts--;
             }
 
-            if (attempts <= 0) throw new Exception("bruh");
+            if (attempts <= 0) throw new IllegalStateException("Failed to retrieve oAuth code from file.");
 
             requestAccessToken(code);
 
-        } catch (URISyntaxException | IOException e) {
+        } catch (URISyntaxException e) {
+            Logger.log("Invalid URI syntax in authorization URI.", e);
+            Logger.println(e);
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
+            Logger.log("Thread interrupted while waiting for OAuth code.", e);
+            Logger.println(e);
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
-        } catch (Exception e) {
+        } catch (IllegalStateException e) {
+            Logger.log("Failed to retrieve oAuth code from file.", e);
+            Logger.println(e);
             throw new RuntimeException(e);
-        }
+        } /*catch (IOException e) {
+            Logger.log("Failed to launch browser.", e);
+            Logger.println(e);
+            throw new RuntimeException(e);
+        }*/
     }
 
     public static Map<String, Object> getCurrentlyPlayingTrack() throws HttpResponseException {
@@ -208,35 +218,44 @@ public class SpotifyWrapper {
                     .header("Authorization", "Bearer " + getAccessToken())
                     .GET()
                     .build();
-
+            Logger.println("Sending request.", 4);
             HttpResponse<String> response = httpClient.send(currentPlayingRequest, HttpResponse.BodyHandlers.ofString());
+            Logger.println("Got response.", 4);
             Map<String, Object> results;
             if (response.body().isEmpty()) {
                 results = null;
+                Logger.println("Response is empty.", 4);
             } else {
                 results = objectMapper.readValue(response.body(), Map.class);
+                Logger.println("Response is non empty.", 4);
+                Logger.println(response.body(), 5);
             }
 
+
+            Logger.println("Checking for errors.", 4);
             checkHTTPErrors(results);
+            Logger.println("No errors found.", 4);
+            Logger.println("Returning results.", 4);
             return results;
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
+        } catch (HttpResponseException e) {
+            throw e;
+        } catch (URISyntaxException | InterruptedException | IOException e) {
+            Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
     }
 
     private static void checkHTTPErrors(Map<String, Object> map) throws HttpResponseException {
-        if (map == null) throw new HttpResponseException(204, "HTTP response was empty.");
+        if (map == null) {
+            Logger.println("Throwing 204 empty error.", 4);
+            throw new HttpResponseException(204, "HTTP response was empty.");
+        }
         if (!map.containsKey("error")) return;
         var errorMap = (Map<String, Object>) map.get("error");
         int statusCode = (int) errorMap.get("status");
         String message = (String) errorMap.get("message");
 
         throw new HttpResponseException(statusCode, message);
-
     }
 
     public static List<Map<String, Object>> getAvailableDevices() {
@@ -260,7 +279,7 @@ public class SpotifyWrapper {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            Logger.log("not sure", e);
         }
 
         return null;
