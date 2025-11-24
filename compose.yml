@@ -1,7 +1,7 @@
 services:
   spotify-tracker:
     build:
-      context: ./tracker/src
+      context: ./tracker
     depends_on:
       - track-database
     environment:
