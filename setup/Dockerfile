@@ -9,3 +9,5 @@ COPY ./schema.sql /docker-entrypoint-initdb.d/schema.sql
 
 # Expose the default Postgres port
 EXPOSE 5432
+volumes:
+  - track-database:/var/lib/postgresql
