@@ -1,5 +1,7 @@
 package com.pugking4.spotifytracker.tracker;
 
+import com.pugking4.spotifytracker.dto.*;
+
 import java.sql.*;
 import java.util.List;
 

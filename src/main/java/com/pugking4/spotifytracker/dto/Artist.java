@@ -1,3 +1,3 @@
-package com.pugking4.spotifytracker.tracker;
+package com.pugking4.spotifytracker.dto;
 
 public record Artist(String id, String name) {}
