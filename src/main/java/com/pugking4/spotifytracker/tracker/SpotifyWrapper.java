@@ -1,11 +1,9 @@
+package com.pugking4.spotifytracker.tracker;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.client.HttpResponseException;
 
-import java.awt.*;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;

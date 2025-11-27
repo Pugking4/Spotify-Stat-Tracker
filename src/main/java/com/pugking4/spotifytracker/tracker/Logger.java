@@ -1,3 +1,4 @@
+package com.pugking4.spotifytracker.tracker;
 
 import java.io.FileWriter;
 import java.io.IOException;

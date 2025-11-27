@@ -1,3 +1,4 @@
+package com.pugking4.spotifytracker.tracker;
 
 import java.time.Instant;
 import java.time.LocalDate;
