@@ -1,3 +1,5 @@
+package com.pugking4.spotifytracker.tracker;
+
 import com.sun.net.httpserver.HttpsServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
