@@ -3,6 +3,7 @@ package com.pugking4.spotifytracker.tracker;
 import com.pugking4.spotifytracker.dto.*;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DatabaseWrapper {
@@ -17,7 +18,7 @@ public class DatabaseWrapper {
 
     public static void insertPlayedTrack(PlayedTrack playedTrack) {
         Logger.println("DatabaseWrapper: Recording track play: " + playedTrack.track().name(), 3);
-        List<Artist> artists = playedTrack.track().album().artists();
+        List<Artist> artists = new ArrayList<>(playedTrack.track().album().artists());
         artists.addAll(playedTrack.track().artists());
         for (Artist artist : artists) {
             Logger.println("DatabaseWrapper: Inserting artist: " + artist.name(), 4);
