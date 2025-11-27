@@ -3,7 +3,7 @@ FROM maven:3.9.11-eclipse-temurin-25 AS build
 
 WORKDIR /app
 
-COPY . .
+COPY tracker .
 
 CMD java -classpath src/java/main Main
 CMD java -classpath src/java main.Main
