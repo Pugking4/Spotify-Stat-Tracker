@@ -1,3 +1,4 @@
+package com.pugking4.spotifytracker.tracker;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -8,6 +9,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
+import com.pugking4.spotifytracker.dto.*;
 import org.apache.http.client.HttpResponseException;
 
 public class Scheduler {

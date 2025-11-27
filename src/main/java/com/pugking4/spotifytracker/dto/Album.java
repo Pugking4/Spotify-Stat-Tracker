@@ -1,3 +1,4 @@
+package com.pugking4.spotifytracker.dto;
 
 import java.time.LocalDate;
 import java.util.List;
