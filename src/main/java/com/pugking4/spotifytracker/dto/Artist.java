@@ -1,3 +1,6 @@
 package com.pugking4.spotifytracker.dto;
 
-public record Artist(String id, String name) {}
+import java.time.Instant;
+import java.util.List;
+
+public record Artist(String id, String name, Integer followers, List<String> genres, String image, Integer popularity, Instant updatedAt) {}

@@ -1,12 +1,12 @@
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\Album.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\Artist.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\DatabaseWrapper.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\Device.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\Logger.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\Main.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\PlayedTrack.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\PlayingTrack.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\Scheduler.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\SpotifyOAuthServer.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\SpotifyWrapper.java
-C:\Users\Joshua Schneider\Documents\Programming\Spotify-Tracker\tracker\src\main\java\Track.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/dto/Device.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/dto/Track.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/dto/PlayedTrack.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/tracker/SpotifyWrapper.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/tracker/Application.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/tracker/PlayingTrack.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/tracker/DatabaseWrapper.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/tracker/Logger.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/dto/Artist.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/dto/Album.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/tracker/Scheduler.java
+/home/pugking4/Spotify-Tracker/src/main/java/com/pugking4/spotifytracker/tracker/SpotifyOAuthServer.java

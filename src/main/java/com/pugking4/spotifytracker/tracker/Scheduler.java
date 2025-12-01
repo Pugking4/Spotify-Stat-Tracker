@@ -15,8 +15,8 @@ import org.apache.http.client.HttpResponseException;
 
 public class Scheduler {
     private final ScheduledExecutorService executor;
-    private final int pollingIntervalActiveSeconds = 5;
-    private final int pollingIntervalIdleSeconds = 15;
+    private final int POLLING_INTERVAL_ACTIVE_SECONDS = 5;
+    private final int POLLING_INTERVAL_IDLE_SECONDS = 15;
     private boolean activeMode;
     private final Runnable myTask;
     private ScheduledFuture<?> futureTask;
@@ -98,7 +98,7 @@ public class Scheduler {
             }
         };
 
-        futureTask = executor.scheduleAtFixedRate(myTask, 0, pollingIntervalIdleSeconds, TimeUnit.SECONDS);
+        futureTask = executor.scheduleWithFixedDelay(myTask, 0, POLLING_INTERVAL_IDLE_SECONDS, TimeUnit.SECONDS);
     }
 
     private boolean isCurrentTrackPlaying(PlayingTrack playingTrack) {
@@ -124,13 +124,13 @@ public class Scheduler {
     private void setActiveMode() {
         if (activeMode) return;
         activeMode = true;
-        changeReadInterval(pollingIntervalActiveSeconds);
+        changeReadInterval(POLLING_INTERVAL_ACTIVE_SECONDS);
     }
 
     private void setIdleMode() {
         if (!activeMode) return;
         activeMode = false;
-        changeReadInterval(pollingIntervalIdleSeconds);
+        changeReadInterval(POLLING_INTERVAL_IDLE_SECONDS);
     }
 
     private void changeReadInterval(long time)
@@ -172,7 +172,7 @@ public class Scheduler {
         for (Map<String, Object> trackArtistMap : trackArtistMaps) {
             String trackArtistId = (String) trackArtistMap.get("id");
             String trackArtistName = (String) trackArtistMap.get("name");
-            Artist trackArtist = new Artist(trackArtistId, trackArtistName);
+            Artist trackArtist = new Artist(trackArtistId, trackArtistName, null, null, null, null, null);
             trackArtists.add(trackArtist);
         }
 
@@ -192,7 +192,7 @@ public class Scheduler {
         for (Map<String, Object> albumArtistMap : albumArtistMaps) {
             String albumArtistId = (String) albumArtistMap.get("id");
             String albumArtistName = (String) albumArtistMap.get("name");
-            Artist albumArtist = new Artist(albumArtistId, albumArtistName);
+            Artist albumArtist = new Artist(albumArtistId, albumArtistName, null, null, null, null, null);
             albumArtists.add(albumArtist);
         }
 
@@ -202,7 +202,7 @@ public class Scheduler {
         Album album = new Album(albumId, albumName, albumCover, albumReleaseDate, albumReleaseDatePrecision, albumType, albumArtists);
         Track track = new Track(trackId, trackName, album, durationMs, isExplicit, isLocal, trackArtists);
 
-        PlayedTrack playedTrack = new PlayedTrack(track,contextType, device, currentPopularity, timeFinished);
+        PlayedTrack playedTrack = new PlayedTrack(track, contextType, device, currentPopularity, timeFinished);
         Logger.println("Ending.", 4);
         return playedTrack;
     }

@@ -3,8 +3,9 @@ package com.pugking4.spotifytracker.tracker;
 import com.pugking4.spotifytracker.dto.*;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.Date;
+import java.time.Instant;
+import java.util.*;
 
 public class DatabaseWrapper {
     private static final String URL = "jdbc:postgresql://localhost:5433/track-database";
@@ -73,8 +74,8 @@ public class DatabaseWrapper {
 
     private static void insertArtist(Artist artist) {
         String sql = """
-        INSERT INTO artists (id, name)
-        VALUES (?, ?)
+        INSERT INTO artists (id, name, followers, genres, image, popularity, updated_at)
+        VALUES (?, ?, null, null, null, null, ?)
         ON CONFLICT (id) DO NOTHING
     """;
         Logger.println("About to start connection.", 4);
@@ -83,6 +84,7 @@ public class DatabaseWrapper {
             Logger.println("Inside connection.", 4);
             stmt.setString(1, artist.id());
             stmt.setString(2, artist.name());
+            stmt.setTimestamp(3, Timestamp.from(artist.updatedAt()));
 
             stmt.executeUpdate();
             Logger.println("Executed update.", 4);
@@ -203,6 +205,61 @@ public class DatabaseWrapper {
 
         } catch (SQLException e) {
             Logger.log("not sure", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static List<Artist> getArtists() {
+        String sql = """
+        SELECT id, name, followers, genres, image, popularity, updated_at
+        FROM artists;
+    """;
+        List<Artist> artists = new ArrayList<>();
+
+        Logger.println("Trying to get all artists...", 4);
+        try(Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ResultSet rs = ps.executeQuery();
+            Logger.println("Executed query...", 4);
+            while (rs.next()) {
+                String id =  rs.getString("id");
+                Logger.println("Got id...", 5);
+                Timestamp updateTimestamp = rs.getTimestamp("updated_at");
+                Instant updatedAt = null;
+                if (updateTimestamp != null) updatedAt = updateTimestamp.toInstant();
+                Logger.println("Got updated_at...", 5);
+
+                Artist artist = new Artist(id, null, null, null, null, null, updatedAt);
+                artists.add(artist);
+            }
+            rs.close();
+            Logger.println("Closed connection...", 4);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        Logger.println("Finished.", 4);
+        return artists;
+    }
+
+    public static void updateBatchArtists(List<Artist> artists) {
+        String updateSql = """
+        UPDATE artists SET name = ?, followers = ?, genres = ?, image = ?, popularity = ?, updated_at = ?
+        WHERE id = ?
+    """;
+
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(updateSql)) {
+            for (Artist artist : artists) {
+                ps.setString(1, artist.name());
+                ps.setInt(2, artist.followers());
+                ps.setString(3, String.join(",", artist.genres()));
+                ps.setString(4, artist.image());
+                ps.setInt(5, artist.popularity());
+                ps.setTimestamp(6, Timestamp.from(artist.updatedAt()));
+                ps.setString(7, artist.id());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
