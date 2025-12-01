@@ -1,6 +1,7 @@
 package com.pugking4.spotifytracker.tracker;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pugking4.spotifytracker.dto.Artist;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.client.HttpResponseException;
 
@@ -16,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,7 @@ public class SpotifyWrapper {
     private static final Path refreshTokenPath = Paths.get("./resources/refresh_token.txt");
     private static final Path authCodePath = Paths.get("./resources/oauth_code.txt");
     private static final String authorisationString = Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
+    private static final int MAX_ARTIST_BATCH_SIZE = 50;
 
     static {
         if (retrieveRefreshToken().isEmpty()) {
@@ -281,5 +284,68 @@ public class SpotifyWrapper {
         }
 
         return null;
+    }
+
+    public static List<Artist> getBatchArtists(List<String> ids) {
+        StringBuilder idArgument = new StringBuilder();
+        for (int i = 0; i < Math.clamp(ids.size(), 0, MAX_ARTIST_BATCH_SIZE); i++) {
+            idArgument.append(ids.get(i)).append(",");
+        }
+        idArgument.deleteCharAt(idArgument.length() - 1);
+
+        try {
+            URI artistsURI = new URIBuilder("https://api.spotify.com/v1/artists")
+                    .setParameter("ids", idArgument.toString())
+                    .build();
+            HttpRequest artistsRequest = HttpRequest.newBuilder(artistsURI)
+                    .header("Authorization", "Bearer " + getAccessToken())
+                    .GET()
+                    .build();
+            Logger.println("Sending request.", 4);
+            HttpResponse<String> response = httpClient.send(artistsRequest, HttpResponse.BodyHandlers.ofString());
+            Logger.println("Got response.", 4);
+            Map<String, Object> results;
+            if (response.body().isEmpty()) {
+                results = null;
+                Logger.println("Response is empty.", 4);
+            } else {
+                results = objectMapper.readValue(response.body(), Map.class);
+                Logger.println("Response is non empty.", 4);
+                Logger.println(response.body(), 5);
+            }
+
+
+            Logger.println("Checking for errors.", 4);
+            checkHTTPErrors(results);
+            Logger.println("No errors found.", 4);
+
+            List<Artist> newArtists = new ArrayList<>();
+            List<Map<String, Object>> artists = (List<Map<String, Object>>) results.get("artists");
+            for (Map<String, Object> artist : artists) {
+                Integer followers = (Integer) ((Map<String, Object>) artist.get("followers")).get("total");
+                List<String> genres = (List<String>) artist.get("genres");
+                String id = (String) artist.get("id");
+                String name = (String) artist.get("name");
+                Integer popularity = (Integer) artist.get("popularity");
+                Logger.println("Preparing to extract image from map.", 4);
+                List<Map<String, Object>> images =  (List<Map<String, Object>>) artist.get("images");
+                String image = null;
+                if (images != null && !images.isEmpty()) {
+                    image = (String) images.getFirst().get("url");
+                    Logger.println("Got image: " + image, 4);
+                } else {
+                    Logger.println("Image was null.", 4);
+                }
+
+                Artist newArtist = new Artist(id, name, followers, genres, image, popularity, Instant.now());
+                newArtists.add(newArtist);
+            }
+
+            Logger.println("Finished.", 4);
+            return newArtists;
+        } catch (URISyntaxException | InterruptedException | IOException e) {
+            Logger.log("not sure", e);
+            throw new RuntimeException(e);
+        }
     }
 }
