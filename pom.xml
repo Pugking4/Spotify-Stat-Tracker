@@ -4,7 +4,7 @@
          https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.yourcompany</groupId>
+    <groupId>com.pugking4.spotifystat.tracker</groupId>
     <artifactId>spotify-tracker</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
@@ -21,17 +21,20 @@
             <artifactId>jackson-databind</artifactId>
             <version>2.17.2</version>
         </dependency>
-
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
             <version>4.5.14</version>
         </dependency>
-
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>42.7.8</version>
+        </dependency>
+        <dependency>
+            <groupId>com.pugking4.spotifystat.common</groupId>
+            <artifactId>Spotify-Stat-Common</artifactId>
+            <version>1.0</version>
         </dependency>
     </dependencies>
 
@@ -50,7 +53,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.pugking4.spotifytracker.tracker.Application</mainClass>
+                                    <mainClass>com.pugking4.spotifystat.tracker.Application</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
@@ -64,7 +67,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.pugking4.spotifytracker.tracker.Application</mainClass>
+                            <mainClass>com.pugking4.spotifystat.tracker.Application</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
