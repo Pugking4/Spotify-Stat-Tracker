@@ -2,9 +2,12 @@ package com.pugking4.spotifystat.tracker;
 
 import com.pugking4.spotifystat.updater.ScheduledUpdater;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Application {
     public static void main(String[] args) {
-        ScheduledUpdater.start();
-        Scheduler scheduler = new Scheduler();
+        List<ScheduledTask> scheduledTasks = List.of(new TrackingPoller(), new ArtistUpdater());
+        Scheduler scheduler = new Scheduler(scheduledTasks);
     }
 }
