@@ -1,3 +1,3 @@
 Manifest-Version: 1.0
-Main-Class: com.pugking4.spotifytracker.tracker.Application
+Main-Class: com.pugking4.spotifystat.tracker.Application
 
