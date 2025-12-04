@@ -1,7 +1,5 @@
 package com.pugking4.spotifystat.tracker;
 
-import com.pugking4.spotifystat.updater.ScheduledUpdater;
-
 import java.util.ArrayList;
 import java.util.List;
 
