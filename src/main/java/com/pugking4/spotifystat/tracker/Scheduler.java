@@ -30,7 +30,7 @@ public class Scheduler {
 
     private void changeReadInterval(ScheduledTask scheduledTask)
     {
-        if(scheduledTask.getDelay() > 0)
+        if (scheduledTask.getDelay() > 0)
         {
             if (scheduledTask.getScheduledFuture() != null)
             {
@@ -54,10 +54,16 @@ public class Scheduler {
 
     private Runnable wrapTask(ScheduledTask task) {
         return () -> {
-            onStart(task);
-            task.getTask().run();
+            try {
+                onStart(task);
+                task.getTask().run();
+            } catch (Exception e) {
+                Logger.println(e);
+                Logger.log("Task " + task.getClass().getSimpleName() + " threw an exception", e);
+            }
         };
     }
+
 
 
 

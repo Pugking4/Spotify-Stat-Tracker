@@ -170,13 +170,6 @@ public class SpotifyWrapper {
 
             URI authURI = authURIBuilder.build();
 
-            /*
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(authURI);
-            } else {
-                Logger.println("Please open this URL in your browser: " + authURI.toString(), 1);
-            }*/
-
             Logger.println("Please open this URL in your browser: " + authURI.toString(), 1);
 
             int attempts = 5;
@@ -223,9 +216,9 @@ public class SpotifyWrapper {
             HttpResponse<String> response = httpClient.send(currentPlayingRequest, HttpResponse.BodyHandlers.ofString());
             Logger.println("Got response.", 4);
             Map<String, Object> results;
-            if (response.body().isEmpty()) {
-                results = null;
-                Logger.println("Response is empty.", 4);
+            if (response.statusCode() == 204) {
+                Logger.println("Response is empty, code 204.", 4);
+                return null;
             } else {
                 results = objectMapper.readValue(response.body(), Map.class);
                 Logger.println("Response is non empty.", 4);
@@ -234,7 +227,7 @@ public class SpotifyWrapper {
 
 
             Logger.println("Checking for errors.", 4);
-            checkHTTPErrors(results);
+            checkHTTPErrors(results, response.statusCode());
             Logger.println("No errors found.", 4);
             Logger.println("Returning results.", 4);
             return results;
@@ -246,20 +239,19 @@ public class SpotifyWrapper {
         }
     }
 
-    private static void checkHTTPErrors(Map<String, Object> map) throws HttpResponseException {
+    private static void checkHTTPErrors(Map<String, Object> map, int statusCode) throws HttpResponseException {
         if (map == null) {
-            Logger.println("Throwing 204 empty error.", 4);
-            throw new HttpResponseException(204, "HTTP response was empty.");
+            Logger.println("Map was null.", 2);
+            throw new RuntimeException();
         }
         if (!map.containsKey("error")) return;
         var errorMap = (Map<String, Object>) map.get("error");
-        int statusCode = (int) errorMap.get("status");
         String message = (String) errorMap.get("message");
 
         throw new HttpResponseException(statusCode, message);
     }
 
-    public static List<Map<String, Object>> getAvailableDevices() {
+    public static List<Map<String, Object>> getAvailableDevices() throws HttpResponseException {
         try {
             URI availableDevicesURI = new URIBuilder("https://api.spotify.com/v1/me/player/devices").build();
             HttpRequest availableDevicesRequest = HttpRequest.newBuilder(availableDevicesURI)
@@ -270,16 +262,17 @@ public class SpotifyWrapper {
             HttpResponse<String> response = httpClient.send(availableDevicesRequest, HttpResponse.BodyHandlers.ofString());
             Map<String, Object> data = objectMapper.readValue(response.body(), Map.class);
 
-            // Get the "devices" list
             Object devicesObj = data.get("devices");
             if (devicesObj instanceof List<?> devicesList) {
-                // Cast each element to Map<String,Object>
-                return (List<Map<String, Object>>) (List<?>) devicesList;
+                return (List<Map<String, Object>>) devicesList;
             } else {
                 return null;
             }
 
-        } catch (Exception e) {
+        } catch (HttpResponseException e) {
+            throw e;
+        }
+        catch (Exception e) {
             Logger.log("not sure", e);
         }
 
@@ -316,29 +309,14 @@ public class SpotifyWrapper {
 
 
             Logger.println("Checking for errors.", 4);
-            checkHTTPErrors(results);
+            checkHTTPErrors(results, response.statusCode());
             Logger.println("No errors found.", 4);
 
             List<Artist> newArtists = new ArrayList<>();
             List<Map<String, Object>> artists = (List<Map<String, Object>>) results.get("artists");
             for (Map<String, Object> artist : artists) {
-                Integer followers = (Integer) ((Map<String, Object>) artist.get("followers")).get("total");
-                List<String> genres = (List<String>) artist.get("genres");
-                String id = (String) artist.get("id");
-                String name = (String) artist.get("name");
-                Integer popularity = (Integer) artist.get("popularity");
-                Logger.println("Preparing to extract image from map.", 4);
-                List<Map<String, Object>> images =  (List<Map<String, Object>>) artist.get("images");
-                String image = null;
-                if (images != null && !images.isEmpty()) {
-                    image = (String) images.getFirst().get("url");
-                    Logger.println("Got image: " + image, 4);
-                } else {
-                    Logger.println("Image was null.", 4);
-                }
-
-                Artist newArtist = new Artist(id, name, followers, genres, image, popularity, Instant.now());
-                newArtists.add(newArtist);
+                artist.put("updated_at", Instant.now());
+                newArtists.add(Artist.fromMap(artist));
             }
 
             Logger.println("Finished.", 4);

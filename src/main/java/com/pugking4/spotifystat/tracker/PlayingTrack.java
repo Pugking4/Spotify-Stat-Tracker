@@ -1,6 +1,7 @@
 package com.pugking4.spotifystat.tracker;
 
 import java.time.Instant;
+import java.util.Map;
 
 public class PlayingTrack {
     public String id;
@@ -37,5 +38,15 @@ public class PlayingTrack {
         } else {
             return false;
         }
+    }
+
+    public static PlayingTrack fromMap(Map<String, Object> map) {
+        Integer progressMs = (Integer) map.get("progress_ms");
+
+        Map<String, Object> itemMap = (Map<String, Object>) map.get("item");
+        String trackId = (String) itemMap.get("id");
+        Integer durationMs = (Integer) itemMap.get("duration_ms");
+
+        return new PlayingTrack(trackId, durationMs, progressMs);
     }
 }

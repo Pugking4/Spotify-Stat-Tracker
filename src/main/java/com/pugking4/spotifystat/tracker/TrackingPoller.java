@@ -26,53 +26,20 @@ public class TrackingPoller implements ScheduledTask {
         task = new Runnable() {
             @Override
             public void run() {
-                Logger.println("Starting poll.", 4);
-                Map<String, Object> trackData = null;
-                try {
-                    Logger.println("Trying to get currently playing track.", 4);
-                    trackData = SpotifyWrapper.getCurrentlyPlayingTrack();
-                    Logger.println("Successfully got current track.", 4);
-                } catch (HttpResponseException e) {
-                    Logger.println("Failed to get current track.", 4);
-                    switch (e.getStatusCode()) {
-                        case 204 -> {
-                            Logger.println("Nothing is playing, empty response: " + e.getMessage(), 4);
-                            return;
-                        }
-                        case 401 -> {
-                            Logger.println("SpotifyWrapper needs to be reauthenticated: " + e.getMessage(), 1);
-                            Logger.log("HTTP response failed", e);
-                            return;
-                        }
-                        case 403 -> {
-                            Logger.log("HTTP response failed", e);
-                            return;
-                        }
-                        case 429 -> {
-                            Logger.println("Rate limit has been reached: " + e.getMessage(), 1);
-                            Logger.log("HTTP response failed", e);
-                            return;
-                        }
-                    }
-                }
-                List<Map<String, Object>> deviceData = SpotifyWrapper.getAvailableDevices();
-                if (deviceData == null) return;
-                Map<String, Object> deviceRaw = deviceData.stream().filter(x -> (Boolean) x.get("is_active")).findFirst().get();
-                assert trackData != null;
-                trackData.put("device", deviceRaw);
+                Map<String, Object> trackData = poll();
+                if (trackData == null) return;
+                setMode(trackData);
+                handleTrackData(trackData);
+                isFirstRun = false;
+            }
+        };
+    }
 
-                if (isPlayingSong(trackData)) {
-                    Logger.println("Song is playing.", 4);
-                    setActiveMode();
-                    PlayingTrack playingTrack = createPlayingTrack(trackData);
-                    if (isCurrentTrackPlaying(playingTrack)) {
-                        Logger.println("Current track is still playing.", 4);
-                        currentTrack.updateProgress(playingTrack.progressMs);
-                        if (currentTrack.played) {
-                            Logger.println("Track has finished playing.", 3);
-                            PlayedTrack playedTrack = createPlayedTrack(trackData, currentTrack);
-                            Logger.println("Calling DatabaseWrapper to record played track.", 4);
-                            DatabaseWrapper.insertPlayedTrack(playedTrack);
+    private void handlePlayedTrack(Map<String, Object> trackData) {
+        Logger.println("Track has finished playing.", 3);
+        PlayedTrack playedTrack = createPlayedTrack(trackData, currentTrack);
+        Logger.println("Calling DatabaseWrapper to record played track.", 4);
+        DatabaseWrapper.insertPlayedTrack(playedTrack);
                         /*executor.submit(() -> {
                             try {
                                 DatabaseWrapper.insertPlayedTrack(playedTrack);
@@ -81,21 +48,94 @@ public class TrackingPoller implements ScheduledTask {
                             }
                         });*/
 
-                            Logger.println("DatabaseWrapper has been called.", 4);
-                            currentTrack = null;
-                        }
-                    } else {
-                        Logger.println("New track has started playing.", 3);
-                        currentTrack = playingTrack;
-                    }
-                } else {
-                    Logger.println("No song is playing.", 4);
-                    setIdleMode();
+        Logger.println("DatabaseWrapper has been called.", 4);
+        currentTrack = null;
+    }
+
+    private void handleTrackData(Map<String, Object> trackData) {
+        if (isPlayingSong(trackData)) {
+            Logger.println("Song is playing.", 4);
+            PlayingTrack playingTrack = PlayingTrack.fromMap(trackData);
+            if (isCurrentTrackPlaying(playingTrack)) {
+                Logger.println("Current track is still playing.", 4);
+                currentTrack.updateProgress(playingTrack.progressMs);
+                if (currentTrack.played) {
+                    handlePlayedTrack(trackData);
                 }
-                Logger.println("Ending poll.", 4);
-                isFirstRun = false;
+            } else {
+                Logger.println("New track has started playing.", 3);
+                currentTrack = playingTrack;
             }
-        };
+        } else {
+            Logger.println("No song is playing.", 4);
+        }
+    }
+
+    private void setMode(Map<String, Object> trackData) {
+        if (isPlayingSong(trackData)) {
+            setActiveMode();
+        } else {
+            setIdleMode();
+        }
+    }
+
+    private Map<String, Object> poll() {
+        Logger.println("Starting poll.", 4);
+        Map<String, Object> trackData = getCurrentPlayingTrack();
+        if (trackData == null) return null;
+        Map<String, Object> deviceData = getCurrentDevice();
+        trackData.put("device", deviceData);
+        Logger.println("Ending poll.", 4);
+        return trackData;
+    }
+
+    private Map<String, Object> getCurrentPlayingTrack() {
+        try {
+            Logger.println("Trying to get currently playing track.", 4);
+            Map<String, Object> trackData = SpotifyWrapper.getCurrentlyPlayingTrack();
+            Logger.println("Successfully got current track.", 4);
+            return trackData;
+        } catch (HttpResponseException e) {
+            Logger.println("Failed to get current track.", 4);
+            handleHttpResponseException(e);
+            return null;
+        }
+    }
+
+    private Map<String, Object> getCurrentDevice() {
+        try {
+            List<Map<String, Object>> deviceData = SpotifyWrapper.getAvailableDevices();
+            if (deviceData == null) return null;
+            return deviceData.stream().filter(x -> (Boolean) x.get("is_active")).findFirst().get();
+
+        } catch (HttpResponseException e) {
+            handleHttpResponseException(e);
+            return null;
+        }
+
+    }
+
+    private void handleHttpResponseException(HttpResponseException e) {
+        switch (e.getStatusCode()) {
+            case 204 -> {
+                Logger.println("Nothing is playing, empty response: " + e.getMessage(), 4);
+                return;
+            }
+            case 401 -> {
+                Logger.println("SpotifyWrapper needs to be reauthenticated: " + e.getMessage(), 1);
+                Logger.log("HTTP response failed", e);
+                return;
+            }
+            case 403 -> {
+                Logger.log("HTTP response failed", e);
+                return;
+            }
+            case 429 -> {
+                Logger.println("Rate limit has been reached: " + e.getMessage(), 1);
+                Logger.log("HTTP response failed", e);
+                return;
+            }
+        }
     }
 
 
@@ -168,17 +208,6 @@ public class TrackingPoller implements ScheduledTask {
         return (Boolean) data.get("is_playing");
     }
 
-    private PlayingTrack createPlayingTrack(Map<String, Object> data) {
-        Integer progressMs = (Integer) data.get("progress_ms");
-
-        Map<String, Object> itemMap = (Map<String, Object>) data.get("item");
-        String trackId = (String) itemMap.get("id");
-        Integer durationMs = (Integer) itemMap.get("duration_ms");
-
-        PlayingTrack playingTrack = new PlayingTrack(trackId, durationMs, progressMs);
-        return playingTrack;
-    }
-
     private void setActiveMode() {
         if (activeMode) return;
         activeMode = true;
@@ -195,74 +224,7 @@ public class TrackingPoller implements ScheduledTask {
 
     private PlayedTrack createPlayedTrack(Map<String, Object> data, PlayingTrack playingTrack) {
         Logger.println("Starting.", 4);
-        Instant timeFinished = playingTrack.timeFinished;
-
-        Map<String, Object> deviceMap = (Map<String, Object>) data.get("device");
-        Device device = new Device((String) deviceMap.get("name"), (String) deviceMap.get("type"));
-
-        Map<String, Object> contextMap = (Map<String, Object>) data.get("context");
-        String contextType = (String) contextMap.get("type");
-
-        Map<String, Object> itemMap = (Map<String, Object>) data.get("item");
-
-        Integer durationMs = (Integer) itemMap.get("duration_ms");
-        Boolean isExplicit = (Boolean) itemMap.get("explicit");
-        Boolean isLocal = (Boolean) itemMap.get("is_local");
-        String trackId = (String) itemMap.get("id");
-        String trackName = (String) itemMap.get("name");
-        Integer currentPopularity = (Integer) itemMap.get("popularity");
-
-        List<Artist> trackArtists = new ArrayList<>();
-        List<Map<String, Object>> trackArtistMaps = (List<Map<String, Object>>) itemMap.get("artists");
-        for (Map<String, Object> trackArtistMap : trackArtistMaps) {
-            String trackArtistId = (String) trackArtistMap.get("id");
-            String trackArtistName = (String) trackArtistMap.get("name");
-            Artist trackArtist = new Artist(trackArtistId, trackArtistName, null, null, null, null, null);
-            trackArtists.add(trackArtist);
-        }
-
-        Map<String, Object> albumMap = (Map<String, Object>) itemMap.get("album");
-        String albumId = (String) albumMap.get("id");
-        String albumType = (String) albumMap.get("album_type");
-        String albumName = (String) albumMap.get("name");
-
-        String albumReleaseDateRaw = (String) albumMap.get("release_date");
-        String albumReleaseDatePrecision = (String) albumMap.get("release_date_precision");
-
-        LocalDate albumReleaseDate = parseSpotifyDate(albumReleaseDateRaw, albumReleaseDatePrecision);
-
-
-        List<Artist> albumArtists = new ArrayList<>();
-        List<Map<String, Object>> albumArtistMaps = (List<Map<String, Object>>) albumMap.get("artists");
-        for (Map<String, Object> albumArtistMap : albumArtistMaps) {
-            String albumArtistId = (String) albumArtistMap.get("id");
-            String albumArtistName = (String) albumArtistMap.get("name");
-            Artist albumArtist = new Artist(albumArtistId, albumArtistName, null, null, null, null, null);
-            albumArtists.add(albumArtist);
-        }
-
-        List<Map<String, Object>> imageMaps = (List<Map<String, Object>>) albumMap.get("images");
-        String albumCover = (String) imageMaps.getFirst().get("url");
-
-        Album album = new Album(albumId, albumName, albumCover, albumReleaseDate, albumReleaseDatePrecision, albumType, albumArtists);
-        Track track = new Track(trackId, trackName, album, durationMs, isExplicit, isLocal, trackArtists);
-
-        PlayedTrack playedTrack = new PlayedTrack(track, contextType, device, currentPopularity, timeFinished);
-        Logger.println("Ending.", 4);
-        return playedTrack;
-    }
-
-    private static LocalDate parseSpotifyDate(String date, String precision) {
-        return switch (precision) {
-            case "year" -> LocalDate.of(Integer.parseInt(date), 1, 1);
-            case "month" -> {
-                String[] parts = date.split("-");
-                int year = Integer.parseInt(parts[0]);
-                int month = Integer.parseInt(parts[1]);
-                yield LocalDate.of(year, month, 1);
-            }
-            case "day" -> LocalDate.parse(date); // full YYYY-MM-DD
-            default -> throw new IllegalArgumentException("Unknown precision: " + precision);
-        };
+        data.put("time_finished", playingTrack.timeFinished);
+        return PlayedTrack.fromMap(data);
     }
 }
