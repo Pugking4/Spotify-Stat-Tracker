@@ -1,6 +1,7 @@
 package com.pugking4.spotifystat.tracker;
 
 import com.pugking4.spotifystat.common.dto.*;
+import com.pugking4.spotifystat.common.logging.Logger;
 
 import java.sql.*;
 import java.sql.Date;

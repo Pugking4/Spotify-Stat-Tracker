@@ -2,6 +2,7 @@ package com.pugking4.spotifystat.tracker;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pugking4.spotifystat.common.dto.Artist;
+import com.pugking4.spotifystat.common.logging.Logger;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.client.HttpResponseException;
 

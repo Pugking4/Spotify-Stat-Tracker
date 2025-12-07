@@ -1,5 +1,7 @@
 package com.pugking4.spotifystat.tracker;
 
+import com.pugking4.spotifystat.common.logging.Logger;
+
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
