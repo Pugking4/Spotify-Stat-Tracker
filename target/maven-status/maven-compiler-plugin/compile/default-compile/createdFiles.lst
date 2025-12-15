@@ -6,7 +6,6 @@ com/pugking4/spotifystat/tracker/SpotifyWrapper.class
 com/pugking4/spotifystat/tracker/DelayType.class
 com/pugking4/spotifystat/tracker/SpotifyOAuthServer.class
 com/pugking4/spotifystat/tracker/ArtistUpdater$1.class
-com/pugking4/spotifystat/tracker/Logger.class
 com/pugking4/spotifystat/tracker/SpotifyOAuthServer$CallbackHandler.class
 com/pugking4/spotifystat/tracker/PlayingTrack.class
 com/pugking4/spotifystat/tracker/Scheduler.class
