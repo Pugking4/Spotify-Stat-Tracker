@@ -29,3 +29,8 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+/src/main/resources/.env
+/log.txt
+/oauth_code.txt
+/refresh_token.txt

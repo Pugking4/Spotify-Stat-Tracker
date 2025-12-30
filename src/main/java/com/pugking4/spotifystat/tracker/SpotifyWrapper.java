@@ -3,6 +3,7 @@ package com.pugking4.spotifystat.tracker;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pugking4.spotifystat.common.dto.Artist;
 import com.pugking4.spotifystat.common.logging.Logger;
+import io.github.cdimascio.dotenv.Dotenv;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.client.HttpResponseException;
 
@@ -28,9 +29,10 @@ public class SpotifyWrapper {
     private static String accessToken;
     private static Instant accessTokenExpiry = Instant.now();
     private static String refreshToken;
-    private static final String clientSecret = "[REDACTED]";
-    private static final String clientId = "[REDACTED]";
-    private static final String redirectUri = "https://[REDACTED]:8888/callback";
+    static Dotenv dotenv = Dotenv.configure().directory(".").load();
+    private static final String clientSecret = dotenv.get("CLIENT_SECRET");
+    private static final String clientId = dotenv.get("CLIENT_ID");
+    private static final String redirectUri = dotenv.get("REDIRECT_URI");
     private static final Path refreshTokenPath = Paths.get("./resources/refresh_token.txt");
     private static final Path authCodePath = Paths.get("./resources/oauth_code.txt");
     private static final String authorisationString = Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
@@ -164,7 +166,7 @@ public class SpotifyWrapper {
 
         try {
             URIBuilder authURIBuilder = new URIBuilder("https://accounts.spotify.com/authorize")
-                    .setParameter("client_id", "[REDACTED]")
+                    .setParameter("client_id", clientId)
                     .setParameter("response_type", "code")
                     .setParameter("redirect_uri", redirectUri)
                     .setParameter("scope", "user-read-currently-playing user-read-playback-state");

@@ -28,26 +28,26 @@ public class ArtistUpdater implements ScheduledTask {
         task = new Runnable() {
             @Override
             public void run() {
-                Logger.println("Preparing to create scheduled updater...", 4);
-                Logger.println("Created executor...", 4);
-                Logger.println("Starting artist update...", 4);
+                //Logger.println("Preparing to create scheduled updater...", 4);
+                //Logger.println("Created executor...", 4);
+                //Logger.println("Starting artist update...", 4);
                 List<Artist> artists = DatabaseWrapper.getArtists();
-                Logger.println("Got " + artists.size() + " artists from database.", 4);
+                //Logger.println("Got " + artists.size() + " artists from database.", 4);
                 List<String> artistUpdateList = artists.stream()
                         .map(a -> new Pair<String, Priority>(a.id(), getPriority(a.updatedAt())))
                         .filter(p -> !p.right().equals(Priority.DO_NOT_UPDATE))
                         .sorted(Comparator.comparing(Pair::right))
                         .map(Pair::left)
                         .toList();
-                Logger.println(artistUpdateList.size() + " artists scheduled for updating.", 4);
+                //Logger.println(artistUpdateList.size() + " artists scheduled for updating.", 4);
                 if (artistUpdateList.isEmpty()) return;
                 List<Artist> updatedArtists = SpotifyWrapper.getBatchArtists(artistUpdateList);
-                Logger.println(updatedArtists.size() + " Got updated artist data.", 4);
+                //Logger.println(updatedArtists.size() + " Got updated artist data.", 4);
                 DatabaseWrapper.updateBatchArtists(updatedArtists);
-                Logger.println(artistUpdateList.size() + " Wrote updated data.", 4);
-                Logger.println("Finished artist update.", 4);
+                //Logger.println(artistUpdateList.size() + " Wrote updated data.", 4);
+                //Logger.println("Finished artist update.", 4);
 
-                Logger.println("Finished.", 4);
+                //Logger.println("Finished.", 4);
                 isFirstRun = false;
             }
         };
@@ -124,7 +124,7 @@ public class ArtistUpdater implements ScheduledTask {
             Logger.println("LOW PRIORITY.", 5);
             return Priority.LOW;
         } else {
-            Logger.println("DO NOT UPDATE!", 5);
+            //Logger.println("DO NOT UPDATE!", 5);
             return Priority.DO_NOT_UPDATE;
         }
     }

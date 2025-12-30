@@ -6,7 +6,7 @@
 
     <groupId>com.pugking4.spotifystat.tracker</groupId>
     <artifactId>spotify-tracker</artifactId>
-    <version>1.0.0</version>
+    <version>0.1.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -34,7 +34,12 @@
         <dependency>
             <groupId>com.pugking4.spotifystat.common</groupId>
             <artifactId>Spotify-Stat-Common</artifactId>
-            <version>1.0</version>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>3.0.0</version>
         </dependency>
     </dependencies>
 
