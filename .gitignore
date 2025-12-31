@@ -43,3 +43,4 @@ bin/
 /resources
 /feat
 /.idea
+/src/main/resources/keystore.jks

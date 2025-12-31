@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import io.github.cdimascio.dotenv.Dotenv;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -26,8 +27,10 @@ import java.util.Map;
 
 public class SpotifyOAuthServer {
     private static final int PORT = 8888;
+    static Dotenv dotenv = Dotenv.configure().directory(".").load();
     private static final String KEYSTORE_PATH = "./resources/keystore.jks"; // your keystore file path
-    private static final String KEYSTORE_PASSWORD = "password"; // your keystore password
+    private static final String KEYSTORE_PASSWORD = dotenv.get("KEYSTORE_PASSWORD"); // your keystore password
+    private static final String IP_ADDRESS = dotenv.get("IP_ADDRESS");
     private static final Path CODE_FILE = Paths.get("./resources/oauth_code.txt");
     private static String code;
     private static String state;
@@ -48,7 +51,7 @@ public class SpotifyOAuthServer {
             sslContext.init(kmf.getKeyManagers(), null, null);
 
             // Create HttpsServer
-            HttpsServer server = HttpsServer.create(new InetSocketAddress("[REDACTED]", PORT), 0);
+            HttpsServer server = HttpsServer.create(new InetSocketAddress(IP_ADDRESS, PORT), 0);
 
             // Configure HTTPS parameters
             server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
