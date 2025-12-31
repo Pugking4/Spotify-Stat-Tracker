@@ -35,3 +35,7 @@ bin/
 /oauth_code.txt
 /refresh_token.txt
 /target
+/Dockerfile
+/Spotify-Tracker.iml
+/compose.yml
+/dependency-reduced-pom.xml
