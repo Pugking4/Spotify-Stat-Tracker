@@ -6,7 +6,7 @@
 
     <groupId>com.pugking4.spotifystat.tracker</groupId>
     <artifactId>spotify-tracker</artifactId>
-    <version>0.1.1</version>
+    <version>0.2.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -14,7 +14,6 @@
         <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -40,6 +39,11 @@
             <groupId>io.github.cdimascio</groupId>
             <artifactId>dotenv-java</artifactId>
             <version>3.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>tigase</groupId>
+            <artifactId>tigase-utils</artifactId>
+            <version>4.0.0</version>
         </dependency>
     </dependencies>
 

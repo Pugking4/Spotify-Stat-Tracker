@@ -30,12 +30,12 @@ public class SpotifyWrapper {
     private static Instant accessTokenExpiry = Instant.now();
     private static String refreshToken;
     static Dotenv dotenv = Dotenv.configure().directory(".").load();
-    private static final String clientSecret = dotenv.get("CLIENT_SECRET");
-    private static final String clientId = dotenv.get("CLIENT_ID");
-    private static final String redirectUri = dotenv.get("REDIRECT_URI");
-    private static final Path refreshTokenPath = Paths.get("./resources/refresh_token.txt");
-    private static final Path authCodePath = Paths.get("./resources/oauth_code.txt");
-    private static final String authorisationString = Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
+    private static final String CLIENT_SECRET = dotenv.get("CLIENT_SECRET");
+    private static final String CLIENT_ID = dotenv.get("CLIENT_ID");
+    private static final String REDIRECT_URI = dotenv.get("REDIRECT_URI");
+    private static final String REFRESH_TOKEN_FILENAME = "refresh_token.txt";
+    private static final String OAUTH_FILENAME = "oauth_code.txt";
+    private static final String AUTHORISATION_STRING = Base64.getEncoder().encodeToString((CLIENT_ID + ":" + CLIENT_SECRET).getBytes(StandardCharsets.UTF_8));
     private static final int MAX_ARTIST_BATCH_SIZE = 50;
 
     static {
@@ -66,7 +66,7 @@ public class SpotifyWrapper {
                             "&refresh_token=" + refreshToken;
 
             HttpRequest tokenRequest = HttpRequest.newBuilder(tokenURI)
-                    .header("Authorization", "Basic " + authorisationString)
+                    .header("Authorization", "Basic " + AUTHORISATION_STRING)
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
@@ -102,10 +102,10 @@ public class SpotifyWrapper {
             String body =
                     "grant_type=authorization_code" +
                             "&code=" + code +
-                            "&redirect_uri=" + redirectUri;
+                            "&redirect_uri=" + REDIRECT_URI;
 
             HttpRequest tokenRequest = HttpRequest.newBuilder(tokenURI)
-                    .header("Authorization", "Basic " + authorisationString)
+                    .header("Authorization", "Basic " + AUTHORISATION_STRING)
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
@@ -118,11 +118,8 @@ public class SpotifyWrapper {
             accessTokenExpiry = Instant.now().plusMillis((Integer) tokenResponse.get("expires_in"));
             refreshToken = (String) tokenResponse.get("refresh_token");
             Logger.println("Gotten new refresh token: " + refreshToken);
-
             Logger.println("Writing refresh token to file.");
-            try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(refreshTokenPath))) {
-                writer.println(refreshToken);
-            }
+            CacheUtilities.write(REFRESH_TOKEN_FILENAME, refreshToken.getBytes(StandardCharsets.UTF_8));
         } catch (IOException | InterruptedException e) {
             Logger.log("not sure", e);
             throw new RuntimeException(e);
@@ -130,27 +127,25 @@ public class SpotifyWrapper {
     }
 
     private static String retrieveOAuthCode() {
-        String authCode = "";
         try {
-            if (Files.exists(authCodePath) && Files.size(authCodePath) > 0) {
-                List<String> lines = Files.readAllLines(authCodePath);
-                if (!lines.isEmpty()) {
-                    authCode = lines.getFirst().trim();
-                }
+            Path oAuthPath = CacheUtilities.getAbsolutePath(OAUTH_FILENAME);
+            Logger.println("Got path: " +  oAuthPath.toString(), 3);
+            if (Files.exists(oAuthPath) && Files.size(oAuthPath) > 0) {
+                Logger.println("File exists!", 2);
+                return new String(CacheUtilities.read(OAUTH_FILENAME), StandardCharsets.UTF_8);
             }
         } catch (IOException e) {
             System.err.println("Error reading file with Files.readAllLines: " + e.getMessage());
         }
-        return authCode;
+        Logger.println("File doesnt exist...", 1);
+        return "";
     }
 
     private static String retrieveRefreshToken() {
         try {
+            Path refreshTokenPath = CacheUtilities.getAbsolutePath(REFRESH_TOKEN_FILENAME);
             if (Files.exists(refreshTokenPath) && Files.size(refreshTokenPath) > 0) {
-                List<String> lines = Files.readAllLines(refreshTokenPath);
-                if (!lines.isEmpty()) {
-                    return lines.getFirst().trim();
-                }
+                return new String(CacheUtilities.read(REFRESH_TOKEN_FILENAME), StandardCharsets.UTF_8);
             }
         } catch (IOException e) {
             Logger.log("not sure", e);
@@ -166,9 +161,9 @@ public class SpotifyWrapper {
 
         try {
             URIBuilder authURIBuilder = new URIBuilder("https://accounts.spotify.com/authorize")
-                    .setParameter("client_id", clientId)
+                    .setParameter("client_id", CLIENT_ID)
                     .setParameter("response_type", "code")
-                    .setParameter("redirect_uri", redirectUri)
+                    .setParameter("redirect_uri", REDIRECT_URI)
                     .setParameter("scope", "user-read-currently-playing user-read-playback-state");
 
             URI authURI = authURIBuilder.build();

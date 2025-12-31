@@ -1,5 +1,6 @@
 package com.pugking4.spotifystat.tracker;
 
+import com.pugking4.spotifystat.common.logging.Logger;
 import com.sun.net.httpserver.HttpsServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
@@ -10,17 +11,13 @@ import io.github.cdimascio.dotenv.Dotenv;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,19 +25,30 @@ import java.util.Map;
 public class SpotifyOAuthServer {
     private static final int PORT = 8888;
     static Dotenv dotenv = Dotenv.configure().directory(".").load();
-    private static final String KEYSTORE_PATH = "./resources/keystore.jks"; // your keystore file path
+    private static final String KEYSTORE_FILENAME = "./resources/keystore.jks"; // your keystore file path
     private static final String KEYSTORE_PASSWORD = dotenv.get("KEYSTORE_PASSWORD"); // your keystore password
     private static final String IP_ADDRESS = dotenv.get("IP_ADDRESS");
-    private static final Path CODE_FILE = Paths.get("./resources/oauth_code.txt");
+
+    private static final String OAUTH_FILENAME = "oauth_code.txt";
     private static String code;
     private static String state;
+
 
     public static void startServer() {
         try {
             // Load the keystore
+            Path keystorePath = CacheUtilities.getAbsolutePath("keystore.jks");
             KeyStore ks = KeyStore.getInstance("JKS");
-            FileInputStream fis = new FileInputStream(KEYSTORE_PATH);
-            ks.load(fis, KEYSTORE_PASSWORD.toCharArray());
+
+            try (InputStream ksStream = Files.newInputStream(keystorePath)) {
+                ks.load(ksStream, KEYSTORE_PASSWORD.toCharArray());
+            } catch (IOException e) {
+                Logger.println("Keystore not found, generating self-signed cert...", 2);
+                generateKeystore(keystorePath);
+                try (InputStream ksStream = Files.newInputStream(keystorePath)) {
+                    ks.load(ksStream, KEYSTORE_PASSWORD.toCharArray());
+                }
+            }
 
             // Set up key manager factory
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
@@ -75,6 +83,33 @@ public class SpotifyOAuthServer {
         }
     }
 
+    private static void generateKeystore(Path keystorePath) throws IOException, InterruptedException {
+        ProcessBuilder pb = new ProcessBuilder(
+                "keytool", "-genkeypair",
+                "-alias", "spotifystat",
+                "-keyalg", "RSA", "-keysize", "2048",
+                "-keystore", keystorePath.toString(),
+                "-storepass", KEYSTORE_PASSWORD,
+                "-keypass", KEYSTORE_PASSWORD,
+                "-dname", "CN=SpotifyStatServer",
+                "-validity", "365",
+                "-ext", "SAN=dns:localhost,dns:127.0.0.1,ip:127.0.0.1,ip:" + IP_ADDRESS
+        );
+
+        pb.inheritIO();
+        Process process = pb.start();
+        int exitCode = process.waitFor();
+
+        if (exitCode != 0) {
+            RuntimeException e = new RuntimeException("keytool failed with exit code: " + exitCode);
+            Logger.log("keytool failed with exit code", e);
+            throw e;
+        }
+
+        Logger.println("Keystore generated at: " + keystorePath.toAbsolutePath(), 2);
+    }
+
+
     static class CallbackHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -84,11 +119,12 @@ public class SpotifyOAuthServer {
             code = params.get("code");
             state = params.get("state");
 
+            Logger.println("Code has been retrieved!", 3);
             if (code != null) {
-                try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(CODE_FILE))) {
-                    writer.println(code);
-                }
+                Logger.println("code: " + code, 3);
+                CacheUtilities.write(OAUTH_FILENAME, code.getBytes(StandardCharsets.UTF_8));
             }
+            Logger.println("Wrote code!", 3);
 
             String response = "Authorization code received: " + code + "<br>State: " + state;
             exchange.sendResponseHeaders(200, response.getBytes().length);
