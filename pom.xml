@@ -6,7 +6,7 @@
 
     <groupId>com.pugking4.spotifystat.tracker</groupId>
     <artifactId>spotify-tracker</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -39,6 +39,11 @@
             <groupId>io.github.cdimascio</groupId>
             <artifactId>dotenv-java</artifactId>
             <version>3.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>6.0.1</version>
         </dependency>
     </dependencies>
 

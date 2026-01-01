@@ -22,8 +22,11 @@ public class TrackingPoller implements ScheduledTask {
     private boolean activeMode = false;
     private boolean isFirstRun = true;
     final private Runnable task;
+    private final SpotifyWrapper spotifyWrapper;
 
-    public TrackingPoller() {
+    public TrackingPoller(SpotifyWrapper spotifyWrapper) {
+        this.spotifyWrapper = spotifyWrapper;
+
         task = new Runnable() {
             @Override
             public void run() {
@@ -93,7 +96,7 @@ public class TrackingPoller implements ScheduledTask {
     private Map<String, Object> getCurrentPlayingTrack() {
         try {
             Logger.println("Trying to get currently playing track.", 4);
-            Map<String, Object> trackData = SpotifyWrapper.getCurrentlyPlayingTrack();
+            Map<String, Object> trackData = spotifyWrapper.getCurrentlyPlayingTrack();
             Logger.println("Successfully got current track.", 4);
             return trackData;
         } catch (HttpResponseException e) {
@@ -105,7 +108,7 @@ public class TrackingPoller implements ScheduledTask {
 
     private Map<String, Object> getCurrentDevice() {
         try {
-            List<Map<String, Object>> deviceData = SpotifyWrapper.getAvailableDevices();
+            List<Map<String, Object>> deviceData = spotifyWrapper.getAvailableDevices();
             if (deviceData == null) return null;
             return deviceData.stream().filter(x -> (Boolean) x.get("is_active")).findFirst().get();
 

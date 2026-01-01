@@ -19,12 +19,15 @@ public class ArtistUpdater implements ScheduledTask {
     private Runnable wrappedTask;
     private boolean isFirstRun = true;
     final private Runnable task;
+    private final SpotifyWrapper spotifyWrapper;
 
     private final int HIGH_UPDATE_WAIT_SECONDS = 72 * 60 * 60;
     private final int MID_UPDATE_WAIT_SECONDS = 24 * 60 * 60;
     private final int LOW_UPDATE_WAIT_SECONDS = 12 * 60 * 60;
 
-    public ArtistUpdater() {
+    public ArtistUpdater(SpotifyWrapper spotifyWrapper) {
+        this.spotifyWrapper = spotifyWrapper;
+
         task = new Runnable() {
             @Override
             public void run() {
@@ -41,7 +44,7 @@ public class ArtistUpdater implements ScheduledTask {
                         .toList();
                 //Logger.println(artistUpdateList.size() + " artists scheduled for updating.", 4);
                 if (artistUpdateList.isEmpty()) return;
-                List<Artist> updatedArtists = SpotifyWrapper.getBatchArtists(artistUpdateList);
+                List<Artist> updatedArtists = spotifyWrapper.getBatchArtists(artistUpdateList);
                 //Logger.println(updatedArtists.size() + " Got updated artist data.", 4);
                 DatabaseWrapper.updateBatchArtists(updatedArtists);
                 //Logger.println(artistUpdateList.size() + " Wrote updated data.", 4);
