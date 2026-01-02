@@ -1,0 +1,6 @@
+{
+  "error": {
+    "message": "Bad refresh token.",
+    "status": 400
+  }
+}

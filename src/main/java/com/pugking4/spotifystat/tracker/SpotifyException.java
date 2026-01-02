@@ -1,0 +1,6 @@
+package com.pugking4.spotifystat.tracker;
+
+public abstract class SpotifyException extends RuntimeException {
+    protected SpotifyException(String message, Throwable cause) { super(message, cause); }
+    protected SpotifyException(String message) { super(message); }
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "message": "The app has exceeded its rate limits.",
+    "status": 429
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "artists": [
+    {
+      "external_urls": {
+        "spotify": "https://open.spotify.com/artist/6gsYua8nnnutLOGReIJHsK"
+      },
+      "followers": {
+        "href": null,
+        "total": 4971
+      },
+      "genres": [
+        "vocaloid"
+      ],
+      "href": "https://api.spotify.com/v1/artists/6gsYua8nnnutLOGReIJHsK?locale=en-US%2Cen%3Bq%3D0.5",
+      "id": "6gsYua8nnnutLOGReIJHsK",
+      "images": [
+        {
+          "url": "https://i.scdn.co/image/ab67616d0000b2736051806a47574a287374ae7b",
+          "height": 640,
+          "width": 640
+        },
+        {
+          "url": "https://i.scdn.co/image/ab67616d00001e026051806a47574a287374ae7b",
+          "height": 300,
+          "width": 300
+        },
+        {
+          "url": "https://i.scdn.co/image/ab67616d000048516051806a47574a287374ae7b",
+          "height": 64,
+          "width": 64
+        }
+      ],
+      "name": "amala",
+      "popularity": 34,
+      "type": "artist",
+      "uri": "spotify:artist:6gsYua8nnnutLOGReIJHsK"
+    },
+    {
+      "external_urls": {
+        "spotify": "https://open.spotify.com/artist/2hYjPkmTry3LYVVSymws5i"
+      },
+      "followers": {
+        "href": null,
+        "total": 171027
+      },
+      "genres": [
+        "anime"
+      ],
+      "href": "https://api.spotify.com/v1/artists/2hYjPkmTry3LYVVSymws5i?locale=en-US%2Cen%3Bq%3D0.5",
+      "id": "2hYjPkmTry3LYVVSymws5i",
+      "images": [
+        {
+          "url": "https://i.scdn.co/image/ab6761610000e5eb78172e107f791b499e6ed883",
+          "height": 640,
+          "width": 640
+        },
+        {
+          "url": "https://i.scdn.co/image/ab6761610000517478172e107f791b499e6ed883",
+          "height": 320,
+          "width": 320
+        },
+        {
+          "url": "https://i.scdn.co/image/ab6761610000f17878172e107f791b499e6ed883",
+          "height": 160,
+          "width": 160
+        }
+      ],
+      "name": "μ's",
+      "popularity": 47,
+      "type": "artist",
+      "uri": "spotify:artist:2hYjPkmTry3LYVVSymws5i"
+    },
+    {
+      "external_urls": {
+        "spotify": "https://open.spotify.com/artist/7gFHp9H8K8h4B9y7HkFC7N"
+      },
+      "followers": {
+        "href": null,
+        "total": 4315
+      },
+      "genres": [],
+      "href": "https://api.spotify.com/v1/artists/7gFHp9H8K8h4B9y7HkFC7N?locale=en-US%2Cen%3Bq%3D0.5",
+      "id": "7gFHp9H8K8h4B9y7HkFC7N",
+      "images": [
+        {
+          "url": "https://i.scdn.co/image/ab6761610000e5eb22379d008120036cd3bea2f7",
+          "height": 640,
+          "width": 640
+        },
+        {
+          "url": "https://i.scdn.co/image/ab6761610000517422379d008120036cd3bea2f7",
+          "height": 320,
+          "width": 320
+        },
+        {
+          "url": "https://i.scdn.co/image/ab6761610000f17822379d008120036cd3bea2f7",
+          "height": 160,
+          "width": 160
+        }
+      ],
+      "name": "GIRLS REVOLUTION PROJECT",
+      "popularity": 30,
+      "type": "artist",
+      "uri": "spotify:artist:7gFHp9H8K8h4B9y7HkFC7N"
+    },
+    {
+      "external_urls": {
+        "spotify": "https://open.spotify.com/artist/4f2l5pSKd1oUMEMx7SZBng"
+      },
+      "followers": {
+        "href": null,
+        "total": 8766
+      },
+      "genres": [
+        "hyperpop"
+      ],
+      "href": "https://api.spotify.com/v1/artists/4f2l5pSKd1oUMEMx7SZBng?locale=en-US%2Cen%3Bq%3D0.5",
+      "id": "4f2l5pSKd1oUMEMx7SZBng",
+      "images": [
+        {
+          "url": "https://i.scdn.co/image/ab6761610000e5eb22281a4924e0b1f558026609",
+          "height": 640,
+          "width": 640
+        },
+        {
+          "url": "https://i.scdn.co/image/ab6761610000517422281a4924e0b1f558026609",
+          "height": 320,
+          "width": 320
+        },
+        {
+          "url": "https://i.scdn.co/image/ab6761610000f17822281a4924e0b1f558026609",
+          "height": 160,
+          "width": 160
+        }
+      ],
+      "name": "pinponpanpon",
+      "popularity": 31,
+      "type": "artist",
+      "uri": "spotify:artist:4f2l5pSKd1oUMEMx7SZBng"
+    },
+    {
+      "external_urls": {
+        "spotify": "https://open.spotify.com/artist/1Y81Ch90opScfpMfN17lZb"
+      },
+      "followers": {
+        "href": null,
+        "total": 58076
+      },
+      "genres": [
+        "speedcore",
+        "breakcore",
+        "hardcore techno",
+        "gabber",
+        "hardcore",
+        "happy hardcore"
+      ],
+      "href": "https://api.spotify.com/v1/artists/1Y81Ch90opScfpMfN17lZb?locale=en-US%2Cen%3Bq%3D0.5",
+      "id": "1Y81Ch90opScfpMfN17lZb",
+      "images": [
+        {
+          "url": "https://i.scdn.co/image/ab6761610000e5ebf2fb9febceb0ab623cba68df",
+          "height": 640,
+          "width": 640
+        },
+        {
+          "url": "https://i.scdn.co/image/ab67616100005174f2fb9febceb0ab623cba68df",
+          "height": 320,
+          "width": 320
+        },
+        {
+          "url": "https://i.scdn.co/image/ab6761610000f178f2fb9febceb0ab623cba68df",
+          "height": 160,
+          "width": 160
+        }
+      ],
+      "name": "Kobaryo",
+      "popularity": 43,
+      "type": "artist",
+      "uri": "spotify:artist:1Y81Ch90opScfpMfN17lZb"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "access_token": "access-token",
+  "token_type": "Bearer",
+  "scope": "scope-one scope-two",
+  "expires_in": 3600
+}

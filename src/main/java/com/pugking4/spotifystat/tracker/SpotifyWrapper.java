@@ -1,5 +1,7 @@
 package com.pugking4.spotifystat.tracker;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pugking4.spotifystat.common.dto.Artist;
 import com.pugking4.spotifystat.common.logging.Logger;
@@ -31,7 +33,7 @@ public class SpotifyWrapper {
         this.tokenManager = tokenManager;
     }
 
-    public Map<String, Object> getCurrentlyPlayingTrack() throws HttpResponseException {
+    public Map<String, Object> getCurrentlyPlayingTrack() {
         try {
             URI currentPlayingURI = new URIBuilder("https://api.spotify.com/v1/me/player/currently-playing").build();
             HttpRequest currentPlayingRequest = HttpRequest.newBuilder(currentPlayingURI)
@@ -41,43 +43,32 @@ public class SpotifyWrapper {
             Logger.println("Sending request.", 4);
             HttpResponse<String> response = httpClient.send(currentPlayingRequest, HttpResponse.BodyHandlers.ofString());
             Logger.println("Got response.", 4);
-            Map<String, Object> results;
-            if (response.statusCode() == 204) {
-                Logger.println("Response is empty, code 204.", 4);
-                return null;
-            } else {
-                results = objectMapper.readValue(response.body(), Map.class);
-                Logger.println("Response is non empty.", 4);
-                Logger.println(response.body(), 5);
-            }
-
+            Map<String, Object> results = objectMapper.readValue(response.body(), Map.class);
 
             Logger.println("Checking for errors.", 4);
             checkHTTPErrors(results, response.statusCode());
             Logger.println("No errors found.", 4);
             Logger.println("Returning results.", 4);
             return results;
-        } catch (HttpResponseException e) {
-            throw e;
         } catch (URISyntaxException | InterruptedException | IOException e) {
-            Logger.log("not sure", e);
-            throw new RuntimeException(e);
+            throw new SpotifyApiException(-1, "Network failure: " + e.getMessage());
         }
     }
 
-    private void checkHTTPErrors(Map<String, Object> map, int statusCode) throws HttpResponseException {
-        if (map == null) {
-            Logger.println("Map was null.", 2);
-            throw new RuntimeException();
+    private void checkHTTPErrors(Map<String, Object> map, int statusCode) {
+        switch (statusCode) {
+            case 200, 204 -> { return; }
+            case 400, 401, 403, 404, 429 -> { }
+            default -> throw new SpotifyApiException(statusCode, "Unexpected status: " + statusCode);
         }
-        if (!map.containsKey("error")) return;
-        var errorMap = (Map<String, Object>) map.get("error");
-        String message = (String) errorMap.get("message");
 
-        throw new HttpResponseException(statusCode, message);
+        Map<String, Object> errorMap = (Map<String, Object>) map.get("error");
+        String message = (String) errorMap.getOrDefault("message", "Unknown error");
+
+        throw new SpotifyApiException(statusCode, message);
     }
 
-    public List<Map<String, Object>> getAvailableDevices() throws HttpResponseException {
+    public List<Map<String, Object>> getAvailableDevices() {
         try {
             URI availableDevicesURI = new URIBuilder("https://api.spotify.com/v1/me/player/devices").build();
             HttpRequest availableDevicesRequest = HttpRequest.newBuilder(availableDevicesURI)
@@ -87,25 +78,17 @@ public class SpotifyWrapper {
 
             HttpResponse<String> response = httpClient.send(availableDevicesRequest, HttpResponse.BodyHandlers.ofString());
             Map<String, Object> data = objectMapper.readValue(response.body(), Map.class);
+            checkHTTPErrors(data, response.statusCode());
 
-            Object devicesObj = data.get("devices");
-            if (devicesObj instanceof List<?> devicesList) {
-                return (List<Map<String, Object>>) devicesList;
-            } else {
-                return null;
-            }
+            List<Map<String, Object>> devices = (List<Map<String, Object>>) data.getOrDefault("devices", List.of());
 
-        } catch (HttpResponseException e) {
-            throw e;
+            return devices;
+        } catch (URISyntaxException | IOException | InterruptedException e) {
+            throw new SpotifyApiException(-1, "Network failure: " + e.getMessage());
         }
-        catch (Exception e) {
-            Logger.log("not sure", e);
-        }
-
-        return null;
     }
 
-    public List<Artist> getBatchArtists(List<String> ids) {
+    public List<Map<String, Object>> getBatchArtists(List<String> ids) {
         StringBuilder idArgument = new StringBuilder();
         for (int i = 0; i < Math.clamp(ids.size(), 0, MAX_ARTIST_BATCH_SIZE); i++) {
             idArgument.append(ids.get(i)).append(",");
@@ -123,33 +106,26 @@ public class SpotifyWrapper {
             Logger.println("Sending request.", 4);
             HttpResponse<String> response = httpClient.send(artistsRequest, HttpResponse.BodyHandlers.ofString());
             Logger.println("Got response.", 4);
-            Map<String, Object> results;
-            if (response.body().isEmpty()) {
-                results = null;
-                Logger.println("Response is empty.", 4);
-            } else {
-                results = objectMapper.readValue(response.body(), Map.class);
-                Logger.println("Response is non empty.", 4);
-                Logger.println(response.body(), 5);
-            }
+            Map<String, Object> results = objectMapper.readValue(response.body(), Map.class);
+            Logger.println("Response is non empty.", 4);
+            Logger.println(response.body(), 5);
 
 
             Logger.println("Checking for errors.", 4);
             checkHTTPErrors(results, response.statusCode());
             Logger.println("No errors found.", 4);
 
-            List<Artist> newArtists = new ArrayList<>();
             List<Map<String, Object>> artists = (List<Map<String, Object>>) results.get("artists");
             for (Map<String, Object> artist : artists) {
                 artist.put("updated_at", Instant.now());
-                newArtists.add(Artist.fromMap(artist));
             }
 
             Logger.println("Finished.", 4);
-            return newArtists;
+            return artists;
         } catch (URISyntaxException | InterruptedException | IOException e) {
             Logger.log("not sure", e);
             throw new RuntimeException(e);
         }
     }
 }
+

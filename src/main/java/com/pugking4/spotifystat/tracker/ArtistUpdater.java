@@ -44,7 +44,8 @@ public class ArtistUpdater implements ScheduledTask {
                         .toList();
                 //Logger.println(artistUpdateList.size() + " artists scheduled for updating.", 4);
                 if (artistUpdateList.isEmpty()) return;
-                List<Artist> updatedArtists = spotifyWrapper.getBatchArtists(artistUpdateList);
+                List<Map<String, Object>> updatedArtistsRaw = spotifyWrapper.getBatchArtists(artistUpdateList);
+                List<Artist> updatedArtists = updatedArtistsRaw.stream().map(Artist::fromMap).toList();
                 //Logger.println(updatedArtists.size() + " Got updated artist data.", 4);
                 DatabaseWrapper.updateBatchArtists(updatedArtists);
                 //Logger.println(artistUpdateList.size() + " Wrote updated data.", 4);

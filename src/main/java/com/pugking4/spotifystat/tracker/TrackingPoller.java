@@ -30,8 +30,13 @@ public class TrackingPoller implements ScheduledTask {
         task = new Runnable() {
             @Override
             public void run() {
-                Map<String, Object> trackData = poll();
-                if (trackData == null) return;
+                Map<String, Object> trackData = null;
+                try {
+                    trackData = poll();
+                } catch (HttpResponseException e) {
+                    throw new RuntimeException(e);
+                }
+                if (trackData.isEmpty()) return;
                 setMode(trackData);
                 handleTrackData(trackData);
                 isFirstRun = false;
@@ -83,40 +88,17 @@ public class TrackingPoller implements ScheduledTask {
         }
     }
 
-    private Map<String, Object> poll() {
+    private Map<String, Object> poll() throws HttpResponseException {
         Logger.println("Starting poll.", 4);
-        Map<String, Object> trackData = getCurrentPlayingTrack();
-        if (trackData == null) return null;
-        Map<String, Object> deviceData = getCurrentDevice();
-        trackData.put("device", deviceData);
+        Map<String, Object> trackData = spotifyWrapper.getCurrentlyPlayingTrack();
+        assert trackData != null;
+        if (!trackData.isEmpty()) {
+            List<Map<String, Object>> devices = spotifyWrapper.getAvailableDevices();
+            Map<String, Object> activeDevice = devices.stream().filter(x -> (Boolean) x.get("is_active")).findFirst().get();
+            trackData.put("device", activeDevice);
+        }
         Logger.println("Ending poll.", 4);
         return trackData;
-    }
-
-    private Map<String, Object> getCurrentPlayingTrack() {
-        try {
-            Logger.println("Trying to get currently playing track.", 4);
-            Map<String, Object> trackData = spotifyWrapper.getCurrentlyPlayingTrack();
-            Logger.println("Successfully got current track.", 4);
-            return trackData;
-        } catch (HttpResponseException e) {
-            Logger.println("Failed to get current track.", 4);
-            handleHttpResponseException(e);
-            return null;
-        }
-    }
-
-    private Map<String, Object> getCurrentDevice() {
-        try {
-            List<Map<String, Object>> deviceData = spotifyWrapper.getAvailableDevices();
-            if (deviceData == null) return null;
-            return deviceData.stream().filter(x -> (Boolean) x.get("is_active")).findFirst().get();
-
-        } catch (HttpResponseException e) {
-            handleHttpResponseException(e);
-            return null;
-        }
-
     }
 
     private void handleHttpResponseException(HttpResponseException e) {

@@ -23,6 +23,10 @@ public class TokenManager {
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
+    private final Cache cache;
+    private final SpotifyOAuthServer oAuthServer;
+    private final Sleeper sleeper;
+    private final long pollDelayMs;
 
     private final String CLIENT_SECRET;
     private final String CLIENT_ID;
@@ -35,26 +39,28 @@ public class TokenManager {
     private volatile Instant accessTokenExpiry = Instant.now();
     private volatile String refreshToken;
 
-    private TokenManager(HttpClient httpClient, ObjectMapper objectMapper) throws InterruptedException, IOException {
+    private TokenManager(HttpClient httpClient, ObjectMapper objectMapper, Cache cache, Dotenv dotenv, SpotifyOAuthServer oAuthServer, Sleeper sleeper, long pollDelayMs) {
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
-        Dotenv dotenv = Dotenv.configure().directory(".").load();
+        this.cache = cache;
         this.CLIENT_SECRET = dotenv.get("CLIENT_SECRET");
         this.CLIENT_ID = dotenv.get("CLIENT_ID");
         this.REDIRECT_URI = dotenv.get("REDIRECT_URI");
         this.AUTHORISATION_STRING = Base64.getEncoder().encodeToString((CLIENT_ID + ":" + CLIENT_SECRET).getBytes(StandardCharsets.UTF_8));
         this.refreshToken = readRefreshToken();
+        this.oAuthServer = oAuthServer;
+        this.sleeper = sleeper;
+        this.pollDelayMs = pollDelayMs;
 
         if (this.refreshToken.isEmpty()) {
-            try {
-                NewTokens newTokens = startAuthorisationWorkflow();
-                setAccessToken(newTokens.accessToken(), newTokens.expiry());
-                setRefreshToken(newTokens.refreshToken());
-
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            NewTokens newTokens = startAuthorisationWorkflow();
+            setAccessToken(newTokens.accessToken(), newTokens.expiry());
+            setRefreshToken(newTokens.refreshToken());
         }
+    }
+
+    public static TokenManager create(HttpClient client, ObjectMapper mapper, Cache cache, Dotenv dotenv, SpotifyOAuthServer oAuthServer, Sleeper sleeper, long pollDelayMs) {
+        return new TokenManager(client, mapper, cache, dotenv, oAuthServer, sleeper, pollDelayMs);
     }
 
     private void setAccessToken(String accessToken, Instant expiry) {
@@ -64,7 +70,7 @@ public class TokenManager {
 
     private void setRefreshToken(String refreshToken) {
         try {
-            CacheUtilities.write(REFRESH_TOKEN_FILENAME, refreshToken.getBytes(StandardCharsets.UTF_8));
+            cache.write(REFRESH_TOKEN_FILENAME, refreshToken.getBytes(StandardCharsets.UTF_8));
             this.refreshToken = refreshToken;
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -84,23 +90,22 @@ public class TokenManager {
 
             return authURI.toString();
 
-        } catch (URISyntaxException e) {
-            Logger.log("Invalid URI syntax in authorization URI.", e);
-            Logger.println(e);
-            throw new RuntimeException(e);
-        } catch (IllegalStateException e) {
-            Logger.log("Failed to retrieve oAuth code from file.", e);
-            Logger.println(e);
-            throw new RuntimeException(e);
+        } catch (URISyntaxException | IllegalStateException e) {
+            throw new SpotifyAuthenticationException(-1, e.getMessage());
         }
     }
 
-    private NewTokens startAuthorisationWorkflow() throws InterruptedException, IOException {
-        SpotifyOAuthServer.startServer();
+    private NewTokens startAuthorisationWorkflow() {
+        oAuthServer.startServer();
         Logger.println(getAuthorisationURI(), 1);
-        String code = "";
+        String code = readOAuthCode();
         while (code.isEmpty()) {
-            Thread.sleep(10000);
+            try {
+                sleeper.sleep(pollDelayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
             code = readOAuthCode();
         }
 
@@ -133,8 +138,7 @@ public class TokenManager {
             Logger.println("Gotten new refresh token: " + refreshToken);
             return new NewTokens(accessToken, refreshToken, accessTokenExpiry);
         } catch (IOException | InterruptedException e) {
-            Logger.log("not sure", e);
-            throw new RuntimeException(e);
+            throw new SpotifyAuthenticationException(-1, e.getMessage());
         }
     }
 
@@ -169,24 +173,23 @@ public class TokenManager {
             return new NewTokens(accessToken, refreshToken, Instant.now().plusSeconds(expirySeconds));
 
         } catch (IOException | InterruptedException e) {
-            Logger.log("not sure", e);
-            throw new RuntimeException(e);
+            throw new SpotifyAuthenticationException(-1, e.getMessage());
         }
     };
 
     private String readOAuthCode() {
         try {
-            return new String(CacheUtilities.read(OAUTH_FILENAME), StandardCharsets.UTF_8);
+            return new String(cache.read(OAUTH_FILENAME), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new SpotifyAuthenticationException(-1, e.getMessage());
         }
     }
 
     private String readRefreshToken() {
         try {
-            return new String(CacheUtilities.read(REFRESH_TOKEN_FILENAME), StandardCharsets.UTF_8);
+            return new String(cache.read(REFRESH_TOKEN_FILENAME), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new SpotifyAuthenticationException(-1, e.getMessage());
         }
     }
 
@@ -197,24 +200,32 @@ public class TokenManager {
         }
         synchronized (TokenManager.class) {
             if (instance == null) {
-                try {
-                    instance = new TokenManager(HttpClient.newBuilder().build(), new ObjectMapper());
-                } catch (InterruptedException | IOException e) {
-                    throw new RuntimeException(e);
-                }
-
+                instance = createInstance();
             }
             return instance;
         }
+    }
+
+    @Generated
+    private static TokenManager createInstance() {
+        return new TokenManager(
+                HttpClient.newBuilder().build(),
+                new ObjectMapper(),
+                new FileCache(),
+                Dotenv.configure().directory(".").load(),
+                new SpotifyOAuthServer(
+                        new FileCache(),
+                        Dotenv.configure().directory(".").load()
+                ),
+                Thread::sleep,
+                10000
+        );
     }
 
     public String getAccessToken() {
         synchronized (LOCK) {
             if (Instant.now().isAfter(accessTokenExpiry)) {
                 NewTokens newTokens = refreshAccessToken();
-                if (newTokens.accessToken() == null) {
-                    throw new RuntimeException("token was null");
-                }
                 setAccessToken(newTokens.accessToken(), newTokens.expiry());
                 setRefreshToken(newTokens.refreshToken());
             }
@@ -222,4 +233,5 @@ public class TokenManager {
         }
     }
 }
+
 

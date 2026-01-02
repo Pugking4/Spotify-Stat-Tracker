@@ -23,43 +23,45 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SpotifyOAuthServer {
-    private static final int PORT = 8888;
-    static Dotenv dotenv = Dotenv.configure().directory(".").load();
-    private static final String KEYSTORE_FILENAME = "./resources/keystore.jks"; // your keystore file path
-    private static final String KEYSTORE_PASSWORD = dotenv.get("KEYSTORE_PASSWORD"); // your keystore password
-    private static final String IP_ADDRESS = dotenv.get("IP_ADDRESS");
+    private final Cache cache;
+    private final Dotenv dotenv;
+    private final Path keystorePath;
+    private HttpsServer server;
+    private final String OAUTH_FILENAME = "oauth_code.txt";
 
-    private static final String OAUTH_FILENAME = "oauth_code.txt";
-    private static String code;
-    private static String state;
-
-
-    public static void startServer() {
+    public SpotifyOAuthServer(Cache cache, Dotenv dotenv) {
+        this.cache = cache;
+        this.dotenv = dotenv;
+        this.keystorePath = FileCache.getAbsolutePath("keystore.jks");
         try {
-            // Load the keystore
-            Path keystorePath = CacheUtilities.getAbsolutePath("keystore.jks");
+            this.server = HttpsServer.create(new InetSocketAddress(dotenv.get("IP_ADDRESS"), Integer.parseInt(dotenv.get("PORT"))), 0);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void startServer() {
+        try {
             KeyStore ks = KeyStore.getInstance("JKS");
+            String keystorePassword = dotenv.get("KEYSTORE_PASSWORD");
 
             try (InputStream ksStream = Files.newInputStream(keystorePath)) {
-                ks.load(ksStream, KEYSTORE_PASSWORD.toCharArray());
+                ks.load(ksStream, keystorePassword.toCharArray());
             } catch (IOException e) {
                 Logger.println("Keystore not found, generating self-signed cert...", 2);
-                generateKeystore(keystorePath);
+                generateKeystore(keystorePath, keystorePassword);
                 try (InputStream ksStream = Files.newInputStream(keystorePath)) {
-                    ks.load(ksStream, KEYSTORE_PASSWORD.toCharArray());
+                    ks.load(ksStream, keystorePassword.toCharArray());
                 }
             }
 
             // Set up key manager factory
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            kmf.init(ks, KEYSTORE_PASSWORD.toCharArray());
+            kmf.init(ks, keystorePassword.toCharArray());
 
             // Initialize SSL context
             SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(kmf.getKeyManagers(), null, null);
-
-            // Create HttpsServer
-            HttpsServer server = HttpsServer.create(new InetSocketAddress(IP_ADDRESS, PORT), 0);
 
             // Configure HTTPS parameters
             server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
@@ -75,7 +77,7 @@ public class SpotifyOAuthServer {
             server.createContext("/callback", new CallbackHandler());
             server.setExecutor(null); // creates a default executor
             server.start();
-            System.out.println("HTTPS Server started on https://" + server.getAddress() + ":" + PORT + "/callback");
+            Logger.println("HTTPS Server started on https://" + server.getAddress() + ":" + server.getAddress().getPort() + "/callback", 1);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -83,17 +85,17 @@ public class SpotifyOAuthServer {
         }
     }
 
-    private static void generateKeystore(Path keystorePath) throws IOException, InterruptedException {
+    private void generateKeystore(Path keystorePath, String keystorePassword) throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(
                 "keytool", "-genkeypair",
                 "-alias", "spotifystat",
                 "-keyalg", "RSA", "-keysize", "2048",
                 "-keystore", keystorePath.toString(),
-                "-storepass", KEYSTORE_PASSWORD,
-                "-keypass", KEYSTORE_PASSWORD,
+                "-storepass", keystorePassword,
+                "-keypass", keystorePassword,
                 "-dname", "CN=SpotifyStatServer",
                 "-validity", "365",
-                "-ext", "SAN=dns:localhost,dns:127.0.0.1,ip:127.0.0.1,ip:" + IP_ADDRESS
+                "-ext", "SAN=dns:localhost,dns:127.0.0.1,ip:127.0.0.1,ip:" + server.getAddress()
         );
 
         pb.inheritIO();
@@ -110,19 +112,19 @@ public class SpotifyOAuthServer {
     }
 
 
-    static class CallbackHandler implements HttpHandler {
+    class CallbackHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             URI requestURI = exchange.getRequestURI();
             Map<String, String> params = queryToMap(requestURI.getQuery());
 
-            code = params.get("code");
-            state = params.get("state");
+            String code = params.get("code");
+            String state = params.get("state");
 
             Logger.println("Code has been retrieved!", 3);
             if (code != null) {
                 Logger.println("code: " + code, 3);
-                CacheUtilities.write(OAUTH_FILENAME, code.getBytes(StandardCharsets.UTF_8));
+                cache.write(OAUTH_FILENAME, code.getBytes(StandardCharsets.UTF_8));
             }
             Logger.println("Wrote code!", 3);
 

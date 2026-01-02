@@ -1,0 +1,24 @@
+{
+  "devices": [
+    {
+      "id": "a40ca27e3e668bfa16c91b7395bfdb98b73c6bf0",
+      "is_active": false,
+      "is_private_session": false,
+      "is_restricted": false,
+      "name": "JOSHU-PC",
+      "supports_volume": true,
+      "type": "Computer",
+      "volume_percent": 59
+    },
+    {
+      "id": "ea36125e0bdd79f816f1fec37a7eb049e07e668c",
+      "is_active": true,
+      "is_private_session": false,
+      "is_restricted": false,
+      "name": "SM-S911B",
+      "supports_volume": false,
+      "type": "Smartphone",
+      "volume_percent": 100
+    }
+  ]
+}

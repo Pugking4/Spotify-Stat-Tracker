@@ -1,0 +1,6 @@
+{
+  "error": {
+    "message": "Bad OAuth request (wrong consumer key, bad nonce, expired timestamp...). Unfortunately, re-authenticating the user won't help here.",
+    "status": 403
+  }
+}
