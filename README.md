@@ -1,6 +1,6 @@
 # Spotify-Stat-Tracker
 ![Coverage](.github/badges/jacoco.svg)
-![Branches](.github/badges/branches.svg)
+![Branches](.github/badges/branches.svg)<br/>
 Real-time music listening analytics powered by Spotify API
 <img width="1194" height="669" alt="Spotify-Stat-Tracker-image" src="https://github.com/user-attachments/assets/728a8b6d-edbf-4440-9356-a9bf2bd9b286" />
 
