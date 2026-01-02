@@ -47,8 +47,8 @@ jobs:
           badges-directory: tracker/.github/badges
           generate-branches-badge: true
 
-      - name: Commit badge (main only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Commit badge (master only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: EndBug/add-and-commit@v7
         with:
           cwd: tracker
