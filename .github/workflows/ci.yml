@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -35,6 +38,22 @@ jobs:
       - name: Test + coverage (tracker)
         working-directory: tracker
         run: mvn -B verify
+
+      - name: Generate JaCoCo badge
+        id: jacoco
+        uses: cicirello/jacoco-badge-generator@v2
+        with:
+          jacoco-csv-file: tracker/target/site/jacoco/jacoco.csv
+          badges-directory: tracker/.github/badges
+          generate-branches-badge: true
+
+      - name: Commit badge (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: EndBug/add-and-commit@v7
+        with:
+          default_author: github_actions
+          message: "ci: update JaCoCo coverage badge"
+          add: "tracker/.github/badges/*.svg"
 
       - name: Upload JaCoCo HTML report
         uses: actions/upload-artifact@v4
