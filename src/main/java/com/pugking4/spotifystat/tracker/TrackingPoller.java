@@ -15,10 +15,13 @@ public final class TrackingPoller {
     private volatile boolean activeMode = false;
 
     private final SpotifyWrapper spotifyWrapper;
+    private final DatabaseWrapper databaseWrapper;
+
     private PlayingTrack currentTrack;
 
-    public TrackingPoller(SpotifyWrapper spotifyWrapper) {
+    public TrackingPoller(SpotifyWrapper spotifyWrapper, DatabaseWrapper databaseWrapper) {
         this.spotifyWrapper = spotifyWrapper;
+        this.databaseWrapper = databaseWrapper;
     }
 
     public ScheduledTaskSpecification spec() {
@@ -42,7 +45,7 @@ public final class TrackingPoller {
         Logger.println("Track has finished playing.", 3);
         PlayedTrack playedTrack = createPlayedTrack(trackData, currentTrack);
         Logger.println("Calling DatabaseWrapper to record played track.", 4);
-        DatabaseWrapper.insertPlayedTrack(playedTrack);
+        databaseWrapper.insertPlayedTrack(playedTrack);
         Logger.println("DatabaseWrapper has been called.", 4);
         currentTrack = null;
     }

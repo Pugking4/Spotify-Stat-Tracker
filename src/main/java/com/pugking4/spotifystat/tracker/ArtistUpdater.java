@@ -17,11 +17,13 @@ public final class ArtistUpdater {
     private final int delaySeconds = 30;
 
     private final SpotifyWrapper spotifyWrapper;
+    private final DatabaseWrapper databaseWrapper;
 
 
 
-    public ArtistUpdater(SpotifyWrapper spotifyWrapper) {
+    public ArtistUpdater(SpotifyWrapper spotifyWrapper, DatabaseWrapper databaseWrapper) {
         this.spotifyWrapper = spotifyWrapper;
+        this.databaseWrapper = databaseWrapper;
     }
 
     public ScheduledTaskSpecification spec() {
@@ -35,7 +37,7 @@ public final class ArtistUpdater {
     }
 
     private void run() {
-        List<Artist> artists = DatabaseWrapper.getArtists();
+        List<Artist> artists = databaseWrapper.getAllSkeletonArtists();
         List<String> artistUpdateList = artists.stream()
                 .map(a -> new Pair<String, Priority>(a.id(), getPriority(a.updatedAt())))
                 .filter(p -> !p.right().equals(Priority.DO_NOT_UPDATE))
@@ -45,7 +47,7 @@ public final class ArtistUpdater {
         if (artistUpdateList.isEmpty()) return;
         List<Map<String, Object>> updatedArtistsRaw = spotifyWrapper.getBatchArtists(artistUpdateList);
         List<Artist> updatedArtists = updatedArtistsRaw.stream().map(Artist::fromMap).toList();
-        DatabaseWrapper.updateBatchArtists(updatedArtists);
+        databaseWrapper.updateBatchArtists(updatedArtists);
     }
 
     private Priority getPriority(Instant updatedAt) {
