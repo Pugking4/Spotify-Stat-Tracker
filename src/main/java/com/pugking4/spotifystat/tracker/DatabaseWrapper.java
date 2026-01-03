@@ -4,9 +4,9 @@ import com.pugking4.spotifystat.common.dto.*;
 import com.pugking4.spotifystat.common.logging.Logger;
 
 import java.sql.*;
-import java.sql.Date;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DatabaseWrapper {
     private static final String URL = "jdbc:postgresql://localhost:5433/track-database";

@@ -18,7 +18,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
 import static com.pugking4.spotifystat.TestUtilities.loadResource;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;

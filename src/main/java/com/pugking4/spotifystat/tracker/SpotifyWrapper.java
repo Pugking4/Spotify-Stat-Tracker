@@ -1,12 +1,8 @@
 package com.pugking4.spotifystat.tracker;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pugking4.spotifystat.common.dto.Artist;
 import com.pugking4.spotifystat.common.logging.Logger;
 import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.client.HttpResponseException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -14,11 +10,7 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 public class SpotifyWrapper {

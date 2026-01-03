@@ -1,12 +1,9 @@
 package com.pugking4.spotifystat.tracker;
 
-import com.pugking4.spotifystat.common.dto.*;
+import com.pugking4.spotifystat.common.dto.PlayedTrack;
 import com.pugking4.spotifystat.common.logging.Logger;
 import org.apache.http.client.HttpResponseException;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;

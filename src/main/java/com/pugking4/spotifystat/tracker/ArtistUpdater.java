@@ -1,17 +1,13 @@
 package com.pugking4.spotifystat.tracker;
 
 import com.pugking4.spotifystat.common.dto.Artist;
-import com.pugking4.spotifystat.common.dto.PlayedTrack;
 import com.pugking4.spotifystat.common.logging.Logger;
-import org.apache.http.client.HttpResponseException;
 
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 public class ArtistUpdater implements ScheduledTask {
     private ScheduledFuture<?> futureTask;
