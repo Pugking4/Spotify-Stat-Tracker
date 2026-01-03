@@ -35,7 +35,8 @@ public class SpotifyWrapper {
             Logger.println("Sending request.", 4);
             HttpResponse<String> response = httpClient.send(currentPlayingRequest, HttpResponse.BodyHandlers.ofString());
             Logger.println("Got response.", 4);
-            Map<String, Object> results = objectMapper.readValue(response.body(), Map.class);
+            String json = bodyOrEmptyJson(response);
+            Map<String, Object> results = objectMapper.readValue(json, Map.class);
 
             Logger.println("Checking for errors.", 4);
             checkHTTPErrors(results, response.statusCode());
@@ -69,10 +70,11 @@ public class SpotifyWrapper {
                     .build();
 
             HttpResponse<String> response = httpClient.send(availableDevicesRequest, HttpResponse.BodyHandlers.ofString());
-            Map<String, Object> data = objectMapper.readValue(response.body(), Map.class);
-            checkHTTPErrors(data, response.statusCode());
+            String json = bodyOrEmptyJson(response);
+            Map<String, Object> results = objectMapper.readValue(json, Map.class);
+            checkHTTPErrors(results, response.statusCode());
 
-            List<Map<String, Object>> devices = (List<Map<String, Object>>) data.getOrDefault("devices", List.of());
+            List<Map<String, Object>> devices = (List<Map<String, Object>>) results.getOrDefault("devices", List.of());
 
             return devices;
         } catch (URISyntaxException | IOException | InterruptedException e) {
@@ -98,9 +100,10 @@ public class SpotifyWrapper {
             Logger.println("Sending request.", 4);
             HttpResponse<String> response = httpClient.send(artistsRequest, HttpResponse.BodyHandlers.ofString());
             Logger.println("Got response.", 4);
-            Map<String, Object> results = objectMapper.readValue(response.body(), Map.class);
+            String json = bodyOrEmptyJson(response);
+            Map<String, Object> results = objectMapper.readValue(json, Map.class);
             Logger.println("Response is non empty.", 4);
-            Logger.println(response.body(), 5);
+            Logger.println(json, 5);
 
 
             Logger.println("Checking for errors.", 4);
@@ -119,5 +122,11 @@ public class SpotifyWrapper {
             throw new RuntimeException(e);
         }
     }
+
+    private String bodyOrEmptyJson(HttpResponse<String> response) {
+        String body = response.body();
+        return (body == null || body.isBlank()) ? "{}" : body;
+    }
+
 }
 
