@@ -91,6 +91,27 @@ public class SpotifyWrapperTests {
     }
 
     @Test
+    void test_GetCurrentlyPlayingTrack_blank() throws IOException, InterruptedException {
+        // Set-up
+        String jsonResponse = "";
+
+        when(tokenManager.getAccessToken()).thenReturn("fake-token");
+        HttpResponse<String> mockResponse = mock(HttpResponse.class);
+        when(mockResponse.statusCode()).thenReturn(204);
+        when(mockResponse.body()).thenReturn(jsonResponse);
+        when(httpClient.send(any(HttpRequest.class), eq(HttpResponse.BodyHandlers.ofString())))
+                .thenReturn(mockResponse);
+
+        // Act
+        Map<String, Object> result = spotifyWrapper.getCurrentlyPlayingTrack();
+
+        // Verify
+        verify(httpClient).send(argThat(req -> req.headers().firstValue("Authorization").orElse("").contains("fake-token")), any());
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
     void test_GetCurrentlyPlayingTrack_paused() throws IOException, InterruptedException {
         // Set-up
         String jsonResponse = loadResource("currently-playing-crazy-paused.json");

@@ -1,9 +1,7 @@
 package com.pugking4.spotifystat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pugking4.spotifystat.tracker.Cache;
-import com.pugking4.spotifystat.tracker.SpotifyOAuthServer;
-import com.pugking4.spotifystat.tracker.TokenManager;
+import com.pugking4.spotifystat.tracker.*;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,8 +16,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
 import static com.pugking4.spotifystat.TestUtilities.loadResource;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -29,8 +26,6 @@ public class TokenManagerTests {
     private HttpClient httpClient;
     @Mock
     private Cache cache;
-    @Mock
-    private Dotenv dotenv;
     @Mock
     private SpotifyOAuthServer oAuthServer;
 
@@ -42,23 +37,19 @@ public class TokenManagerTests {
         MockitoAnnotations.openMocks(this);
     }
 
-    void setDotenvFiles() {
-        when(dotenv.get("CLIENT_SECRET")).thenReturn("client-secret");
-        when(dotenv.get("CLIENT_ID")).thenReturn("client-id");
-        when(dotenv.get("REDIRECT_URI")).thenReturn("redirect-uri");
+    TokenManagerConfig defaultConfig() {
+        return new TokenManagerConfig("client-id", "client-secret", "redirect-uri");
     }
 
     void createDefaultTokenManager() throws IOException {
-        setDotenvFiles();
-
         when(cache.read("oauth_code.txt")).thenReturn("valid-code".getBytes(StandardCharsets.UTF_8));
         when(cache.read("refresh_token.txt")).thenReturn("valid-refresh".getBytes(StandardCharsets.UTF_8));
 
-        createTokenManager();
+        createTokenManager(defaultConfig());
     }
 
-    void createTokenManager() throws IOException {
-        tokenManager = TokenManager.create(httpClient, objectMapper, cache, dotenv, oAuthServer, ms -> {}, 0);
+    void createTokenManager(TokenManagerConfig cfg) throws IOException {
+        tokenManager = TokenManager.create(httpClient, objectMapper, cache, cfg, oAuthServer, ms -> {}, 0);
     }
 
     @Test
@@ -116,8 +107,7 @@ public class TokenManagerTests {
         when(httpClient.send(any(HttpRequest.class), eq(HttpResponse.BodyHandlers.ofString())))
                 .thenReturn(mockResponse);
 
-        setDotenvFiles();
-        createTokenManager();
+        createTokenManager(defaultConfig());
 
         String result = tokenManager.getAccessToken();
 
@@ -141,8 +131,7 @@ public class TokenManagerTests {
         when(httpClient.send(any(HttpRequest.class), eq(HttpResponse.BodyHandlers.ofString())))
                 .thenReturn(mockResponse);
 
-        setDotenvFiles();
-        createTokenManager();
+        createTokenManager(defaultConfig());
 
         String result = tokenManager.getAccessToken();
 
@@ -167,8 +156,7 @@ public class TokenManagerTests {
         when(httpClient.send(any(HttpRequest.class), eq(HttpResponse.BodyHandlers.ofString())))
                 .thenReturn(mockResponse);
 
-        setDotenvFiles();
-        createTokenManager();
+        createTokenManager(defaultConfig());
 
         String result = tokenManager.getAccessToken();
 
@@ -185,6 +173,38 @@ public class TokenManagerTests {
         TokenManager actual = TokenManager.getInstance();
 
         assertSame(fake, actual);
+    }
+
+    @Test
+    void test_redirect_uri_mismatch() throws IOException, InterruptedException {
+        when(cache.read("refresh_token.txt")).thenReturn("invalid-refresh-token".getBytes(StandardCharsets.UTF_8));
+        when(cache.read("oauth_code.txt")).thenReturn(new byte[0]);
+        doAnswer(invocation -> {
+            when(cache.read("oauth_code.txt"))
+                    .thenReturn("new-code".getBytes(StandardCharsets.UTF_8));
+            return null;
+        }).when(oAuthServer).startServer();
+
+        HttpResponse<String> refreshError = mock(HttpResponse.class);
+        when(refreshError.body()).thenReturn(loadResource("refresh-token-error.json"));
+
+        HttpResponse<String> redirectMismatch = mock(HttpResponse.class);
+// IMPORTANT: match the JSON shape your code expects in requestTokens():
+// {"error": {"status": 400, "message": "wrong-redirect-uri"}}
+        when(redirectMismatch.body()).thenReturn(loadResource("request-tokens-redirect-uri-mismatch.json"));
+
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(refreshError, redirectMismatch);  // consecutive calls [web:1021]
+
+        createTokenManager(new TokenManagerConfig("client-id", "client-secret", "wrong-redirect-uri"));
+
+        SpotifyAuthenticationException ex =
+                assertThrows(SpotifyAuthenticationException.class, () -> tokenManager.getAccessToken());
+
+// Optional: assert details
+        assertEquals(400, ex.getStatusCode());
+        assertEquals("Mismatched redirect uri", ex.getMessage());
+
     }
 
 

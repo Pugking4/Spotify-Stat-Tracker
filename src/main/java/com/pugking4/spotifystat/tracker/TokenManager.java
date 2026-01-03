@@ -13,7 +13,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Map;
 
 // https://refactoring.guru/design-patterns/singleton/java/example#example-2
@@ -28,25 +27,20 @@ public class TokenManager {
     private final Sleeper sleeper;
     private final long pollDelayMs;
 
-    private final String CLIENT_SECRET;
-    private final String CLIENT_ID;
-    private final String REDIRECT_URI;
-    private final String REFRESH_TOKEN_FILENAME = "refresh_token.txt";
-    private final String OAUTH_FILENAME = "oauth_code.txt";
-    private final String AUTHORISATION_STRING;
+    private final TokenManagerConfig cfg;
 
     private volatile String accessToken;
     private volatile Instant accessTokenExpiry = Instant.now();
     private volatile String refreshToken;
 
-    private TokenManager(HttpClient httpClient, ObjectMapper objectMapper, Cache cache, Dotenv dotenv, SpotifyOAuthServer oAuthServer, Sleeper sleeper, long pollDelayMs) {
+    private static final String REFRESH_TOKEN_FILENAME = "refresh_token.txt";
+    private static final String OAUTH_CODE_FILENAME = "oauth_code.txt";
+
+    private TokenManager(HttpClient httpClient, ObjectMapper objectMapper, Cache cache, TokenManagerConfig cfg, SpotifyOAuthServer oAuthServer, Sleeper sleeper, long pollDelayMs) {
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
         this.cache = cache;
-        this.CLIENT_SECRET = dotenv.get("CLIENT_SECRET");
-        this.CLIENT_ID = dotenv.get("CLIENT_ID");
-        this.REDIRECT_URI = dotenv.get("REDIRECT_URI");
-        this.AUTHORISATION_STRING = Base64.getEncoder().encodeToString((CLIENT_ID + ":" + CLIENT_SECRET).getBytes(StandardCharsets.UTF_8));
+        this.cfg = cfg;
         this.refreshToken = readRefreshToken();
         this.oAuthServer = oAuthServer;
         this.sleeper = sleeper;
@@ -59,8 +53,8 @@ public class TokenManager {
         }
     }
 
-    public static TokenManager create(HttpClient client, ObjectMapper mapper, Cache cache, Dotenv dotenv, SpotifyOAuthServer oAuthServer, Sleeper sleeper, long pollDelayMs) {
-        return new TokenManager(client, mapper, cache, dotenv, oAuthServer, sleeper, pollDelayMs);
+    public static TokenManager create(HttpClient client, ObjectMapper mapper, Cache cache, TokenManagerConfig cfg, SpotifyOAuthServer oAuthServer, Sleeper sleeper, long pollDelayMs) {
+        return new TokenManager(client, mapper, cache, cfg, oAuthServer, sleeper, pollDelayMs);
     }
 
     private void setAccessToken(String accessToken, Instant expiry) {
@@ -81,9 +75,9 @@ public class TokenManager {
     private String getAuthorisationURI() {
         try {
             URIBuilder authURIBuilder = new URIBuilder("https://accounts.spotify.com/authorize")
-                    .setParameter("client_id", CLIENT_ID)
+                    .setParameter("client_id", cfg.clientId())
                     .setParameter("response_type", "code")
-                    .setParameter("redirect_uri", REDIRECT_URI)
+                    .setParameter("redirect_uri", cfg.redirectUri())
                     .setParameter("scope", "user-read-currently-playing user-read-playback-state");
 
             URI authURI = authURIBuilder.build();
@@ -120,18 +114,25 @@ public class TokenManager {
             String body =
                     "grant_type=authorization_code" +
                             "&code=" + code +
-                            "&redirect_uri=" + REDIRECT_URI;
+                            "&redirect_uri=" + cfg.redirectUri();
 
             HttpRequest tokenRequest = HttpRequest.newBuilder(tokenURI)
-                    .header("Authorization", "Basic " + AUTHORISATION_STRING)
+                    .header("Authorization", "Basic " + cfg.authorisationHeaderValue())
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
 
 
             HttpResponse<String> response = httpClient.send(tokenRequest, HttpResponse.BodyHandlers.ofString());
-
             Map<String, Object> tokenResponse = objectMapper.readValue(response.body(), Map.class);
+
+            if (tokenResponse.containsKey("error")) {
+                Map<String, Object> errorMap = (Map<String, Object>) tokenResponse.get("error");
+                Logger.println("Problem with getting tokens: " + errorMap.get("message"));
+                throw new SpotifyAuthenticationException((Integer) errorMap.get("status"), (String) errorMap.get("message"));
+            }
+
+
             String accessToken = (String) tokenResponse.get("access_token");
             Instant accessTokenExpiry = Instant.now().plusMillis((Integer) tokenResponse.get("expires_in"));
             String refreshToken = (String) tokenResponse.get("refresh_token");
@@ -151,7 +152,7 @@ public class TokenManager {
                             "&refresh_token=" + refreshToken;
 
             HttpRequest tokenRequest = HttpRequest.newBuilder(tokenURI)
-                    .header("Authorization", "Basic " + AUTHORISATION_STRING)
+                    .header("Authorization", "Basic " + cfg.authorisationHeaderValue())
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
@@ -179,7 +180,7 @@ public class TokenManager {
 
     private String readOAuthCode() {
         try {
-            return new String(cache.read(OAUTH_FILENAME), StandardCharsets.UTF_8);
+            return new String(cache.read(OAUTH_CODE_FILENAME), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new SpotifyAuthenticationException(-1, e.getMessage());
         }
@@ -187,7 +188,9 @@ public class TokenManager {
 
     private String readRefreshToken() {
         try {
-            return new String(cache.read(REFRESH_TOKEN_FILENAME), StandardCharsets.UTF_8);
+            byte[] bytes = cache.read(REFRESH_TOKEN_FILENAME);
+            if (bytes == null || bytes.length == 0) return "";
+            return new String(bytes, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new SpotifyAuthenticationException(-1, e.getMessage());
         }
@@ -206,16 +209,17 @@ public class TokenManager {
         }
     }
 
-    @Generated
+    @ExcludeFromJacocoGeneratedReport
     private static TokenManager createInstance() {
+        Dotenv dotenv = Dotenv.load();
         return new TokenManager(
                 HttpClient.newBuilder().build(),
                 new ObjectMapper(),
                 new FileCache(),
-                Dotenv.configure().directory(".").load(),
+                new TokenManagerConfig(dotenv.get("CLIENT_ID"), dotenv.get("CLIENT_SECRET"), dotenv.get("REDIRECT_URI")),
                 new SpotifyOAuthServer(
                         new FileCache(),
-                        Dotenv.configure().directory(".").load()
+                        new OAuthServerConfig(dotenv.get("HOST"), Integer.parseInt(dotenv.get("PORT")), dotenv.get("KEYSTORE_PASSWORD"))
                 ),
                 Thread::sleep,
                 10000
@@ -224,7 +228,7 @@ public class TokenManager {
 
     public String getAccessToken() {
         synchronized (LOCK) {
-            if (Instant.now().isAfter(accessTokenExpiry)) {
+            if (Instant.now().isAfter(accessTokenExpiry) || accessToken == null) {
                 NewTokens newTokens = refreshAccessToken();
                 setAccessToken(newTokens.accessToken(), newTokens.expiry());
                 setRefreshToken(newTokens.refreshToken());

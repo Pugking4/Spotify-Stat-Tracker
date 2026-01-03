@@ -2,7 +2,6 @@ package com.pugking4.spotifystat.tracker;
 
 import com.pugking4.spotifystat.common.logging.Logger;
 import com.sun.net.httpserver.*;
-import io.github.cdimascio.dotenv.Dotenv;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -22,26 +21,32 @@ import java.util.Map;
 
 public class SpotifyOAuthServer {
     private final Cache cache;
-    private final Dotenv dotenv;
-    private final Path keystorePath;
-    private HttpsServer server;
-    private final String OAUTH_FILENAME = "oauth_code.txt";
+    private final HttpsServer server;
+    private final OAuthServerConfig cfg;
 
-    public SpotifyOAuthServer(Cache cache, Dotenv dotenv) {
+    public SpotifyOAuthServer(Cache cache, OAuthServerConfig cfg) {
         this.cache = cache;
-        this.dotenv = dotenv;
-        this.keystorePath = FileCache.getAbsolutePath("keystore.jks");
+        this.cfg = cfg;
         try {
-            this.server = HttpsServer.create(new InetSocketAddress(dotenv.get("IP_ADDRESS"), Integer.parseInt(dotenv.get("PORT"))), 0);
+            this.server = HttpsServer.create(new InetSocketAddress(cfg.host(), cfg.port()), 0);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    public SpotifyOAuthServer(Cache cache, OAuthServerConfig cfg, HttpsServer server) {
+        this.cache = cache;
+        this.cfg = cfg;
+        this.server = server;
+    }
+
+    public HttpHandler callbackHandler() { return new CallbackHandler(); }
+
     public void startServer() {
         try {
             KeyStore ks = KeyStore.getInstance("JKS");
-            String keystorePassword = dotenv.get("KEYSTORE_PASSWORD");
+            String keystorePassword = cfg.keystorePassword();
+            Path keystorePath = cfg.keystorePath();
 
             try (InputStream ksStream = Files.newInputStream(keystorePath)) {
                 ks.load(ksStream, keystorePassword.toCharArray());
@@ -83,6 +88,17 @@ public class SpotifyOAuthServer {
         }
     }
 
+    public void stopServer() {
+        try {
+            server.stop(0);
+        } catch (Exception ignored) { }
+    }
+
+
+    public int getPort() {
+        return server.getAddress().getPort();
+    }
+
     private void generateKeystore(Path keystorePath, String keystorePassword) throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(
                 "keytool", "-genkeypair",
@@ -93,7 +109,7 @@ public class SpotifyOAuthServer {
                 "-keypass", keystorePassword,
                 "-dname", "CN=SpotifyStatServer",
                 "-validity", "365",
-                "-ext", "SAN=dns:localhost,dns:127.0.0.1,ip:127.0.0.1,ip:" + server.getAddress()
+                "-ext", "SAN=dns:localhost,dns:127.0.0.1,ip:127.0.0.1,ip:" + cfg.host()
         );
 
         pb.inheritIO();
@@ -122,6 +138,7 @@ public class SpotifyOAuthServer {
             Logger.println("Code has been retrieved!", 3);
             if (code != null) {
                 Logger.println("code: " + code, 3);
+                String OAUTH_FILENAME = "oauth_code.txt";
                 cache.write(OAUTH_FILENAME, code.getBytes(StandardCharsets.UTF_8));
             }
             Logger.println("Wrote code!", 3);

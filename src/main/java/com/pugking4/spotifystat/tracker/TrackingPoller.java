@@ -2,43 +2,40 @@ package com.pugking4.spotifystat.tracker;
 
 import com.pugking4.spotifystat.common.dto.PlayedTrack;
 import com.pugking4.spotifystat.common.logging.Logger;
-import org.apache.http.client.HttpResponseException;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ScheduledFuture;
 
-public class TrackingPoller implements ScheduledTask {
-    private ScheduledFuture<?> futureTask;
-    private final int POLLING_INTERVAL_ACTIVE_SECONDS = 5;
-    private final int POLLING_INTERVAL_IDLE_SECONDS = 15;
-    private PlayingTrack currentTrack;
-    private int delay = POLLING_INTERVAL_IDLE_SECONDS;
-    private boolean isPendingIntervalChange = false;
-    private Runnable wrappedTask;
-    private boolean activeMode = false;
-    private boolean isFirstRun = true;
-    final private Runnable task;
+public final class TrackingPoller {
+    private static final int ACTIVE = 5;
+    private static final int IDLE = 15;
+
+    private volatile int delaySeconds = IDLE;
+    private volatile boolean activeMode = false;
+
     private final SpotifyWrapper spotifyWrapper;
+    private PlayingTrack currentTrack;
 
     public TrackingPoller(SpotifyWrapper spotifyWrapper) {
         this.spotifyWrapper = spotifyWrapper;
+    }
 
-        task = new Runnable() {
-            @Override
-            public void run() {
-                Map<String, Object> trackData = null;
-                try {
-                    trackData = poll();
-                } catch (HttpResponseException e) {
-                    throw new RuntimeException(e);
-                }
-                if (trackData.isEmpty()) return;
-                setMode(trackData);
-                handleTrackData(trackData);
-                isFirstRun = false;
-            }
-        };
+    public ScheduledTaskSpecification spec() {
+        return new ScheduledTaskSpecification(
+                "Tracking Poller",
+                this::run,
+                DelayType.FIXED_RATE,
+                Duration.ZERO,
+                () -> Duration.ofSeconds(delaySeconds)
+        );
+    }
+
+    private void run() {
+        var trackData = poll();
+        if (trackData.isEmpty()) return;
+        setMode(trackData);
+        handleTrackData(trackData);
     }
 
     private void handlePlayedTrack(Map<String, Object> trackData) {
@@ -46,16 +43,17 @@ public class TrackingPoller implements ScheduledTask {
         PlayedTrack playedTrack = createPlayedTrack(trackData, currentTrack);
         Logger.println("Calling DatabaseWrapper to record played track.", 4);
         DatabaseWrapper.insertPlayedTrack(playedTrack);
-                        /*executor.submit(() -> {
-                            try {
-                                DatabaseWrapper.insertPlayedTrack(playedTrack);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        });*/
-
         Logger.println("DatabaseWrapper has been called.", 4);
         currentTrack = null;
+    }
+
+    private boolean isPlayingSong(Map<String, Object> data) {
+        return (Boolean) data.get("is_playing");
+    }
+
+    private boolean isCurrentTrackPlaying(PlayingTrack playingTrack) {
+        if (currentTrack == null) return false;
+        return currentTrack.equals(playingTrack);
     }
 
     private void handleTrackData(Map<String, Object> trackData) {
@@ -85,7 +83,7 @@ public class TrackingPoller implements ScheduledTask {
         }
     }
 
-    private Map<String, Object> poll() throws HttpResponseException {
+    private Map<String, Object> poll() {
         Logger.println("Starting poll.", 4);
         Map<String, Object> trackData = spotifyWrapper.getCurrentlyPlayingTrack();
         assert trackData != null;
@@ -98,111 +96,19 @@ public class TrackingPoller implements ScheduledTask {
         return trackData;
     }
 
-    private void handleHttpResponseException(HttpResponseException e) {
-        switch (e.getStatusCode()) {
-            case 204 -> {
-                Logger.println("Nothing is playing, empty response: " + e.getMessage(), 4);
-                return;
-            }
-            case 401 -> {
-                Logger.println("SpotifyWrapper needs to be reauthenticated: " + e.getMessage(), 1);
-                Logger.log("HTTP response failed", e);
-                return;
-            }
-            case 403 -> {
-                Logger.log("HTTP response failed", e);
-                return;
-            }
-            case 429 -> {
-                Logger.println("Rate limit has been reached: " + e.getMessage(), 1);
-                Logger.log("HTTP response failed", e);
-                return;
-            }
+
+    private void setActiveMode() {
+        if (!activeMode) {
+            activeMode = true;
+            delaySeconds = ACTIVE;
         }
     }
 
-
-    @Override
-    public int getRequiredNumberOfThreads() {
-        return 2;
-    }
-
-    @Override
-    public Runnable getTask() {
-        return task;
-    }
-
-    @Override
-    public void setScheduledFuture(ScheduledFuture<?> scheduledFuture) {
-        this.futureTask = scheduledFuture;
-    }
-
-    @Override
-    public ScheduledFuture<?> getScheduledFuture() {
-        return futureTask;
-    }
-
-    @Override
-    public int getDelay() {
-        return delay;
-    }
-
-    @Override
-    public int getInitialDelay() {
-        return 0;
-    }
-
-    @Override
-    public DelayType getDelayType() {
-        return DelayType.FIXED_RATE;
-    }
-
-    @Override
-    public boolean isPendingDelayChange() {
-        return isPendingIntervalChange;
-    }
-
-    @Override
-    public void setWrappedTask(Runnable wrappedTask) {
-        this.wrappedTask = wrappedTask;
-    }
-
-    @Override
-    public Runnable getWrappedTask() {
-        return wrappedTask;
-    }
-
-    @Override
-    public boolean isFirstRun() {
-        return isFirstRun;
-    }
-
-    @Override
-    public void resolvePendingDelayChange() {
-        isPendingIntervalChange = false;
-    }
-
-    private boolean isCurrentTrackPlaying(PlayingTrack playingTrack) {
-        if (currentTrack == null) return false;
-        return currentTrack.equals(playingTrack);
-    }
-
-    private boolean isPlayingSong(Map<String, Object> data) {
-        return (Boolean) data.get("is_playing");
-    }
-
-    private void setActiveMode() {
-        if (activeMode) return;
-        activeMode = true;
-        delay = POLLING_INTERVAL_ACTIVE_SECONDS;
-        isPendingIntervalChange = true;
-    }
-
-    private void setIdleMode() {
-        if (!activeMode) return;
-        activeMode = false;
-        delay = POLLING_INTERVAL_IDLE_SECONDS;
-        isPendingIntervalChange = true;
+    private void setIdleMode()   {
+        if (activeMode)  {
+            activeMode = false;
+            delaySeconds = IDLE;
+        }
     }
 
     private PlayedTrack createPlayedTrack(Map<String, Object> data, PlayingTrack playingTrack) {

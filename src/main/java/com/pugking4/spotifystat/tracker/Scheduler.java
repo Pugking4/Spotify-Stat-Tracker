@@ -2,101 +2,65 @@ package com.pugking4.spotifystat.tracker;
 
 import com.pugking4.spotifystat.common.logging.Logger;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class Scheduler {
     private final ScheduledExecutorService executor;
-    private final List<ScheduledTask> scheduledTasks;
+    Set<ScheduledTaskSpecification> taskSpecifications;
+    Map<ScheduledTaskSpecification, ScheduledFuture<?>> futures = new HashMap<>();
 
-    public Scheduler(List<ScheduledTask> scheduledTasks) {
-        this.scheduledTasks = scheduledTasks;
-        int coreCount = scheduledTasks.stream()
-                .mapToInt(ScheduledTask::getRequiredNumberOfThreads)
-                .sum();
-        this.executor = Executors.newScheduledThreadPool(coreCount);
-        for (ScheduledTask scheduledTask : scheduledTasks) {
-            scheduledTask.setWrappedTask(wrapTask(scheduledTask));
-            scheduleTask(scheduledTask);
+    @ExcludeFromJacocoGeneratedReport
+    public Scheduler(Set<ScheduledTaskSpecification> specs) {
+        this.taskSpecifications = specs;
+        this.executor = Executors.newScheduledThreadPool(specs.size());
+    }
+
+    public Scheduler(Set<ScheduledTaskSpecification> specs, ScheduledExecutorService executor) {
+        this.taskSpecifications = specs;
+        this.executor = executor;
+    }
+
+    public void start() {
+        for (ScheduledTaskSpecification spec : taskSpecifications) {
+            schedule(spec);
         }
     }
 
-    private void onStart(ScheduledTask scheduledTask) {
-        if (scheduledTask.isPendingDelayChange()) {
-            changeReadInterval(scheduledTask);
-            scheduledTask.resolvePendingDelayChange();
+    public void stop() {
+        for (ScheduledFuture<?> f : futures.values()) {
+            if (f != null) f.cancel(true);
         }
+        executor.shutdown();
     }
 
-    private void changeReadInterval(ScheduledTask scheduledTask)
-    {
-        if (scheduledTask.getDelay() > 0)
-        {
-            if (scheduledTask.getScheduledFuture() != null)
-            {
-                scheduledTask.getScheduledFuture().cancel(true);
-            }
-            scheduleTask(scheduledTask);
-        }
-    }
+    private void schedule(ScheduledTaskSpecification spec) {
+        Runnable wrapped = wrap(spec);
 
-    private void scheduleTask(ScheduledTask scheduledTask) {
-        int initialDelay = 0;
-        if (scheduledTask.isFirstRun()) {
-            initialDelay = scheduledTask.getInitialDelay();
-        }
-
-        switch (scheduledTask.getDelayType()) {
-            case FIXED_DELAY -> scheduledTask.setScheduledFuture(executor.scheduleWithFixedDelay(scheduledTask.getWrappedTask(), initialDelay, scheduledTask.getDelay(), TimeUnit.SECONDS));
-            case FIXED_RATE -> scheduledTask.setScheduledFuture(executor.scheduleAtFixedRate(scheduledTask.getWrappedTask(), initialDelay, scheduledTask.getDelay(), TimeUnit.SECONDS));
-            case DYNAMIC_DELAY -> scheduleTaskWithDynamicDelay(scheduledTask);
-        }
-    }
-
-    private void scheduleTaskWithDynamicDelay(ScheduledTask scheduledTask) {
-        Runnable task = () -> {
-            try {
-                long start = System.currentTimeMillis();
-                // Run your actual task logic here
-                scheduledTask.getWrappedTask().run();
-                long end = System.currentTimeMillis();
-                long taskDurationSeconds = (end - start) / 1000;
-
-                // Calculate the next delay
-                int nextDelay = Math.max(0, scheduledTask.getDelay() - (int) taskDurationSeconds);
-
-                // Schedule the next execution
-                reschedule(nextDelay, scheduledTask);
-            } catch (Exception e) {
-                Logger.log("Task threw an exception", e);
-                // Optionally reschedule with a default delay on error
-                reschedule(scheduledTask.getDelay(), scheduledTask);
-            }
+        ScheduledFuture<?> f = switch (spec.delayType()) {
+            case FIXED_RATE ->
+                    executor.scheduleAtFixedRate(wrapped, spec.initialDelay().toSeconds(), spec.delay().get().toSeconds(), TimeUnit.SECONDS);
+            case FIXED_DELAY ->
+                    executor.scheduleWithFixedDelay(wrapped, spec.initialDelay().toSeconds(), spec.delay().get().toSeconds(), TimeUnit.SECONDS);
         };
-        scheduledTask.setScheduledFuture(executor.schedule(task, 0, TimeUnit.SECONDS));
+
+        futures.put(spec, f);
     }
 
 
-    private Runnable wrapTask(ScheduledTask task) {
+    private Runnable wrap(ScheduledTaskSpecification spec) {
         return () -> {
             try {
-                onStart(task);
-                task.getTask().run();
+                spec.task().run();
             } catch (Exception e) {
                 Logger.println(e);
-                Logger.log("Task " + task.getClass().getSimpleName() + " threw an exception", e);
+                Logger.log("Task " + spec.description() + " threw an exception", e);
             }
         };
     }
-
-    public void reschedule(int delay, ScheduledTask scheduledTask) {
-        if (scheduledTask.getScheduledFuture() != null) {
-            scheduledTask.getScheduledFuture().cancel(true);
-        }
-        scheduledTask.setScheduledFuture(executor.schedule(scheduledTask.getWrappedTask(), delay, TimeUnit.SECONDS));
-    }
-
-
 }
