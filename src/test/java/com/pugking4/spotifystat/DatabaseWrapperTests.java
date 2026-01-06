@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import static com.pugking4.spotifystat.TestUtilities.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -46,100 +47,10 @@ public class DatabaseWrapperTests {
     @Mock
     ResultSet rs;
 
-    private DatabaseWrapper databaseWrapper;
-
     @BeforeEach
     void setUp() throws SQLException {
         MockitoAnnotations.openMocks(this);
         when(ds.getConnection()).thenReturn(conn);
-    }
-
-    private List<Artist> getArtists(int amount) {
-        return IntStream.range(0, amount)
-                .mapToObj(i -> {
-                        Instant base = Instant.parse("2026-01-01T00:00:00Z").plusSeconds(i * 60L);
-                        return new Artist(
-                                "artist-" + i,                 // id
-                                "Artist " + i,                 // name
-                                1000 + (i * 25),               // followers
-                                List.of("genre" + (i % 6)),    // genres
-                                "https://example.com/img/" + i + ".jpg", // image
-                                i % 100,                       // popularity
-                                base      // updatedAt
-                        );
-                })
-                .toList();
-    }
-
-    private List<Artist> getSkeletonArtists(int amount) {
-        return IntStream.range(0, amount)
-                .mapToObj(i -> {
-                    Instant base = Instant.parse("2026-01-01T00:00:00Z").plusSeconds(i * 60L);
-                    if (i % 2 == 0) base = null;
-                    return new Artist(
-                            "artist-" + i,                 // id
-                            null,                 // name
-                            null,               // followers
-                            null,    // genres
-                            null, // image
-                            null,                       // popularity
-                            base      // updatedAt
-                    );
-                })
-                .toList();
-    }
-
-    private PlayedTrack getPlayedTrack() {
-        return new PlayedTrack(
-                new Track(
-                        "0ws53An61dr49WfNuxWNKM",
-                        "UMASUGIRU",
-                        new Album(
-                                "24LeTf9xct196GYmJ7Qemo",
-                                "UMASUGIRU",
-                                "https://i.scdn.co/image/ab67616d0000b2733bc37da83f50aa7309cfe094",
-                                LocalDate.of(2026, 1, 1),
-                                "day",
-                                "single",
-                                List.of(
-                                        new Artist(
-                                                "4f2l5pSKd1oUMEMx7SZBng",
-                                                "pinponpanpon",
-                                                8795,
-                                                List.of(
-                                                        "hyperpop"
-                                                ),
-                                                "https://i.scdn.co/image/ab6761610000e5eb22281a4924e0b1f558026609",
-                                                31,
-                                                Instant.now().minusSeconds(14400)
-                                        )
-                                )
-                        ),
-                        155384,
-                        false,
-                        false,
-                        List.of(
-                                new Artist(
-                                        "4f2l5pSKd1oUMEMx7SZBng",
-                                        "pinponpanpon",
-                                        8795,
-                                        List.of(
-                                                "hyperpop"
-                                        ),
-                                        "https://i.scdn.co/image/ab6761610000e5eb22281a4924e0b1f558026609",
-                                        31,
-                                        Instant.now().minusSeconds(14400)
-                                )
-                        )
-                ),
-                "collection",
-                new Device(
-                        "JOSHU-PC",
-                        "Computer"
-                ),
-                0,
-                Instant.now().minusSeconds(180)
-        );
     }
 
     @Test
