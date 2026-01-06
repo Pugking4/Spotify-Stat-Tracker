@@ -1,7 +1,9 @@
 {
   "is_playing": true,
   "timestamp": 1767315635248,
-  "context": null,
+  "context": {
+    "type": "collection"
+  },
   "progress_ms": 2978,
   "item": {
     "album": {
