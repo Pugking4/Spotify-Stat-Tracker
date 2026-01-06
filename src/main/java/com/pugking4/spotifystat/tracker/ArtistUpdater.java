@@ -10,20 +10,18 @@ import java.util.List;
 import java.util.Map;
 
 public final class ArtistUpdater {
-    private static final int HIGH_DELAY = 72 * 60 * 60;
-    private static final int MID_DELAY = 24 * 60 * 60;
-    private static final int LOW_DELAY = 12 * 60 * 60;
-
     private final int delaySeconds = 30;
 
     private final SpotifyWrapper spotifyWrapper;
     private final DatabaseWrapper databaseWrapper;
+    private final PriorityClassifier priorityClassifier;
 
 
 
-    public ArtistUpdater(SpotifyWrapper spotifyWrapper, DatabaseWrapper databaseWrapper) {
+    public ArtistUpdater(SpotifyWrapper spotifyWrapper, DatabaseWrapper databaseWrapper, PriorityClassifier priorityClassifier) {
         this.spotifyWrapper = spotifyWrapper;
         this.databaseWrapper = databaseWrapper;
+        this.priorityClassifier = priorityClassifier;
     }
 
     public ScheduledTaskSpecification spec() {
@@ -37,34 +35,20 @@ public final class ArtistUpdater {
     }
 
     private void run() {
-        List<Artist> artists = databaseWrapper.getAllSkeletonArtists();
-        List<String> artistUpdateList = artists.stream()
-                .map(a -> new Pair<String, Priority>(a.id(), getPriority(a.updatedAt())))
-                .filter(p -> !p.right().equals(Priority.DO_NOT_UPDATE))
-                .sorted(Comparator.comparing(Pair::right))
-                .map(Pair::left)
-                .toList();
-        if (artistUpdateList.isEmpty()) return;
-        List<Map<String, Object>> updatedArtistsRaw = spotifyWrapper.getBatchArtists(artistUpdateList);
+        List<Artist> skeletonArtists = databaseWrapper.getAllSkeletonArtists();
+        var artistIDs = computeUpdateCandidates(skeletonArtists);
+        if (artistIDs.isEmpty()) return;
+        List<Map<String, Object>> updatedArtistsRaw = spotifyWrapper.getBatchArtists(artistIDs);
         List<Artist> updatedArtists = updatedArtistsRaw.stream().map(Artist::fromMap).toList();
         databaseWrapper.updateBatchArtists(updatedArtists);
     }
 
-    private Priority getPriority(Instant updatedAt) {
-        if (updatedAt == null) {
-            return Priority.MAX;
-        } else if (updatedAt.isBefore(Instant.now().minusSeconds(HIGH_DELAY))) {
-            Logger.println("HIGH PRIORITY!", 5);
-            return Priority.HIGH;
-        } else if (updatedAt.isBefore(Instant.now().minusSeconds(MID_DELAY))) {
-            Logger.println("MID PRIORITY.", 5);
-            return Priority.MEDIUM;
-        } else if (updatedAt.isBefore(Instant.now().minusSeconds(LOW_DELAY))) {
-            Logger.println("LOW PRIORITY.", 5);
-            return Priority.LOW;
-        } else {
-            //Logger.println("DO NOT UPDATE!", 5);
-            return Priority.DO_NOT_UPDATE;
-        }
+    List<String> computeUpdateCandidates(List<Artist> artists) {
+        return artists.stream()
+                .map(a -> new Pair<String, Priority>(a.id(), priorityClassifier.classify(a.updatedAt())))
+                .filter(p -> p.right() != Priority.DO_NOT_UPDATE)
+                .sorted(Comparator.comparing(Pair::right))
+                .map(Pair::left)
+                .toList();
     }
 }

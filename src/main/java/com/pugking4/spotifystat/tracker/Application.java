@@ -7,6 +7,7 @@ import org.postgresql.ds.PGSimpleDataSource;
 import javax.sql.DataSource;
 import java.lang.reflect.Array;
 import java.net.http.HttpClient;
+import java.time.Clock;
 import java.util.List;
 import java.util.Set;
 
@@ -24,7 +25,8 @@ public class Application {
         ds.setPassword(dotenv.get("DATABASE_PASSWORD"));
         DatabaseWrapper databaseWrapper = new DatabaseWrapper(ds);
 
-        Set<ScheduledTaskSpecification> specs = Set.of(new TrackingPoller(spotifyWrapper, databaseWrapper).spec(), new ArtistUpdater(spotifyWrapper, databaseWrapper).spec());
+        PriorityClassifier priorityClassifier = new PriorityClassifier(Clock.systemDefaultZone());
+        Set<ScheduledTaskSpecification> specs = Set.of(new TrackingPoller(spotifyWrapper, databaseWrapper).spec(), new ArtistUpdater(spotifyWrapper, databaseWrapper, priorityClassifier).spec());
         Scheduler scheduler = new Scheduler(specs);
 
         scheduler.start();
