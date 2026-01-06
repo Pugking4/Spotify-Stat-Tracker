@@ -43,6 +43,7 @@ public final class TrackingPoller {
 
     private void handlePlayedTrack(Map<String, Object> trackData) {
         Logger.println("Track has finished playing.", 3);
+        insertDeviceData(trackData);
         PlayedTrack playedTrack = createPlayedTrack(trackData, currentTrack);
         Logger.println("Calling DatabaseWrapper to record played track.", 4);
         databaseWrapper.insertPlayedTrack(playedTrack);
@@ -89,14 +90,14 @@ public final class TrackingPoller {
     private Map<String, Object> poll() {
         Logger.println("Starting poll.", 4);
         Map<String, Object> trackData = spotifyWrapper.getCurrentlyPlayingTrack();
-        assert trackData != null;
-        if (!trackData.isEmpty()) {
-            List<Map<String, Object>> devices = spotifyWrapper.getAvailableDevices();
-            Map<String, Object> activeDevice = devices.stream().filter(x -> (Boolean) x.get("is_active")).findFirst().get();
-            trackData.put("device", activeDevice);
-        }
         Logger.println("Ending poll.", 4);
         return trackData;
+    }
+
+    private void insertDeviceData(Map<String, Object> trackData) {
+        List<Map<String, Object>> devices = spotifyWrapper.getAvailableDevices();
+        Map<String, Object> activeDevice = devices.stream().filter(x -> (Boolean) x.get("is_active")).findFirst().get();
+        trackData.put("device", activeDevice);
     }
 
 
